@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { ZodError } from 'zod';
+import { z, ZodError } from 'zod';
+import { themes } from '../shared/theme';
 import { assignmentInput, type Control } from './schema';
 import { ApiError, type Repository } from './store';
 import { authenticate, callback, cookieValue, digest, issueSession, login, sessionCookie, type AuthConfig } from './auth';
@@ -41,7 +42,15 @@ export function createApi(repo:Repository,options:{origin:string;local?:boolean;
         if(master)response=master;
         else if(report)response=report;
         else if(ledger)response=ledger;
-        else if(path==='/api/me' && method==='GET')response=json({user:{id:user.id,displayName:user.displayName,loginId:user.loginId,role:user.role},departments:allowedDepartments(state,user),revision:state.revision,local:!!options.local,writable:repo.writable});
+        else if(path==='/api/me' && method==='GET')response=json({user:{id:user.id,displayName:user.displayName,loginId:user.loginId,role:user.role,theme:user.theme??'modern-dark'},departments:allowedDepartments(state,user),revision:state.revision,local:!!options.local,writable:repo.writable});
+        else if(path==='/api/me/preferences' && method==='PATCH'){
+          const input=z.object({theme:z.enum(themes),expectedRevision:z.number().int().positive()}).strict().parse(await body(req));
+          const next=await repo.updateControl(input.expectedRevision,current=>{
+            const actor=current.users.find(u=>u.id===user.id&&u.subject===user.subject&&u.status==='ACTIVE');
+            if(!actor)throw new ApiError(401,'UNAUTHENTICATED','로그인이 필요합니다.');
+            actor.theme=input.theme;return current;
+          });response=json({theme:input.theme,revision:next.revision});
+        }
         else if(path==='/api/departments' && method==='GET')response=json(allowedDepartments(state,user));
         else if(path==='/api/department-context' && method==='GET'){
           const id=url.searchParams.get('departmentId')??'';requireDepartment(state,user,id);response=json({department:state.departments.find(d=>d.id===id),writable:repo.writable});

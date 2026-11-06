@@ -13,6 +13,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createHash } from 'node:crypto';
 import { MemoryRepository } from '../server/store';
+import { unzip } from './xlsx-utils';
 
 const origin = 'http://127.0.0.1:5173';
 const incomeId = '00000000-0000-4000-8000-000000000031', expenseId = '00000000-0000-4000-8000-000000000032', missionId = '00000000-0000-4000-8000-000000000033';
@@ -263,5 +264,32 @@ describe('ledger API backed by immutable per-transaction JSON', () => {
     await create({ amount: Number.MAX_SAFE_INTEGER });
     expect((await api(request('/transactions', b, input({ amount: 1 })))).status).toBe(422);
     expect((await listing()).total).toBe(1); expect((await repo.control()).audit).toHaveLength(1);
+  });
+});
+
+
+describe('diary running balances and Excel export',()=>{
+  it('computes each balance from all department activity despite filters, sort and pagination',async()=>{
+    await api(request('/admin/opening-balances',admin,{departmentId:ids.edu,date:'2026-01-01',amount:1000,reason:'검증한 이월',expectedRevision:1}));
+    await create({date:'2026-04-01',amount:100});await create({date:'2026-05-01',amount:50});
+    const expense=await create({date:'2026-05-02',type:'EXPENSE',accountId:expenseId,amount:20});
+    const result=await listing('&from=2026-05-01&to=2026-05-31&type=EXPENSE&pageSize=1&sort=date_desc');
+    expect(result.items[0].id).toBe(expense.id);expect(result.items[0].runningBalance).toBe(1130);expect(result.totals.expense).toBe(20);expect(result.carryForward).toBe(1100);
+  });
+  it('keeps per-transaction balances unknown without an opening balance and excludes deleted transactions',async()=>{
+    const first=await create();expect((await listing()).items[0].runningBalance).toBeNull();
+    await api(request('/transactions',b,{id:first.id,departmentId:ids.edu,expectedVersion:first.version,reason:'중복 기록 취소'},'DELETE'));
+    expect((await listing('&includeDeleted=1')).items[0].runningBalance).toBeNull();
+  });
+  it('exports all matching rows beyond pagination from the same authorized snapshot without modifying it',async()=>{
+    await create({description:'=SUM(A1) <교회>',date:'2026-05-01',amount:100});await create({description:'두 번째 기록',date:'2026-05-02',amount:50});await create({date:'2026-06-01',description:'기간 밖'});
+    const before=await repo.control();const response=await api(request('/transactions/export.xlsx?departmentId='+ids.edu+'&from=2026-05-01&to=2026-05-31&pageSize=1',b));
+    expect(response.status).toBe(200);expect(response.headers.get('content-type')).toContain('spreadsheetml');
+    const sheet=unzip(Buffer.from(await response.arrayBuffer()))['xl/worksheets/sheet1.xml'];
+    expect(sheet).toContain('=SUM(A1) &lt;교회&gt;');expect(sheet).toContain('두 번째 기록');expect(sheet).not.toContain('기간 밖');expect(sheet).not.toContain('<f>');expect(await repo.control()).toEqual(before);
+  });
+  it('requires authentication and current department access for export',async()=>{
+    const path='/transactions/export.xlsx?departmentId='+ids.mission;
+    expect((await api(request(path))).status).toBe(401);expect((await api(request(path,b))).status).toBe(403);expect((await api(request(path,admin))).status).toBe(200);
   });
 });

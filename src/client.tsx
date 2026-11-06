@@ -1,6 +1,7 @@
 import { createContext } from 'react';
+import type { Theme } from '../shared/theme';
 export type Department = { id: string; name: string; code: string; status: 'ACTIVE' | 'INACTIVE'; createdAt?: string; managementPeriod?: 'MONTHLY' | 'YEARLY' };
-export type User = { id: string; displayName: string; role: 'ADMIN' | 'ACCOUNTANT'; loginId: string; status?: 'ACTIVE' | 'DISABLED' };
+export type User = { id: string; displayName: string; role: 'ADMIN' | 'ACCOUNTANT'; loginId: string; status?: 'ACTIVE' | 'DISABLED'; theme?: Theme };
 export type Me = { user: User; departments: Department[]; revision: number; local: boolean; writable: boolean };
 export class ApiFailure extends Error { constructor(message: string, public status: number, public code: string) { super(message); } }
 export async function api<T>(path: string, body?: unknown, method = 'POST'): Promise<T> {

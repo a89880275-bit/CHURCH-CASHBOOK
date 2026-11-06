@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80">
+  <filter id="pores"><feTurbulence type="fractalNoise" baseFrequency=".2 .35" numOctaves="3" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter>
+  <path d="M0 0h80v80H0z" filter="url(#pores)" opacity=".35"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m2 8 5-3 6 2 3 5m8-8 4 5-1 6m10-8 5-3 6 3m9-1 3 6 7 2m7-9 4 3M4 25l5-4 7 2 2 6m10-7 4 3 7-2m9-4-2 7 4 5m12-10 6 4-2 6m9-10 4 4M1 43l5 4 5-2m8-6 4 5 7 1m7-7 7 2 2 6m9-8 5 5-2 6m9-7 5-3 7 4M5 61l6-3 6 4m7-6 5 5-2 5m11-9 6 4 6-1m7-4 3 7 6 1m8-8 4 5M1 76l6-3 6 3m9-1 5 4m9-7 5 4 7-2m8 1 7-3 4 5m8-3 5 2" stroke="#784658" stroke-opacity=".35" stroke-width="1.15"/>
+    <path d="m3 9 5-3 6 2m11-3 4 5m9-2 5-3 5 3m10-1 3 6m-56 13 5-4 6 2m13 0 4 3 7-2m10-3-2 7m15-5 6 4M3 44l5 4m12-7 4 5 7 1m7-7 7 2m11-2 5 5m8-1 5-3 5 3M6 62l6-3 6 4m7-5 5 5m9-4 6 4 6-1m7-4 3 7m-58 12 5-3 6 3m23-3 5 4 7-2m9 1 7-3" stroke="#ffdfdf" stroke-opacity=".65" stroke-width=".9"/>
+  </g>
+</svg>

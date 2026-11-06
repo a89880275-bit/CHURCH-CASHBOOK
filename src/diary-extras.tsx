@@ -1,0 +1,6 @@
+import { money } from './report-components';
+import type { DashboardReport } from './report-types';
+export function DiaryExtras({data}:{data:DashboardReport|null}){
+  const total=data?(data.summary.income+data.summary.expense):0;
+  return <><section className="diary-ratio panel"><div className="panel-heading"><div><h2>수입 · 지출 비율</h2><p>선택 기간 실제 거래 기준</p></div></div><div className="diary-ratio-body"><div className="diary-donut" role="img" aria-label={data?`수입 ${money(data.summary.income)}원, 지출 ${money(data.summary.expense)}원`:'집계 대기'} style={{background:total?`conic-gradient(#8eb8ec 0 ${data!.summary.income/total*100}%, #e6a4b6 0 100%)`:'#eadfe2'}}><span>{money(data?.summary.count)}<small>거래 건수</small></span></div><div><p className="income-text">수입　{money(data?.summary.income)}원</p><p className="expense-text">지출　{money(data?.summary.expense)}원</p><small>이월금액은 비율에 포함하지 않습니다.</small></div></div></section><section className="diary-status panel"><div className="panel-heading"><div><h2>이번 연도의 마감 기록</h2><p>상태 조회 · 마감 실행은 아직 미구현입니다.</p></div></div><div className="diary-month-stamps">{data?.monthly.map(m=><span key={m.month} className={m.closingStatus==='CLOSED'?'closed':''}>{m.month}월<small>{({OPEN:'미마감',CLOSED:'마감',PARTIAL:'일부 마감',EMPTY:'대상 없음'})[m.closingStatus]}</small></span>)}</div></section></>;
+}

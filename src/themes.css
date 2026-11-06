@@ -1,0 +1,121 @@
+/* Modern Dark deliberately inherits the original stylesheet. */
+.dashboard-book{display:contents}.diary-binder,.diary-index,.diary-flower,.diary-bookmark,.diary-page-numbers,.diary-title-strip,.diary-section-label,.diary-ratio,.diary-status{display:none}
+.theme-menu{position:relative;padding:0;border:0;color:inherit;z-index:45}.theme-menu>summary{display:flex;align-items:center;gap:8px;font-size:12px;color:inherit;list-style:none;padding:7px 10px;border:1px solid #344258;border-radius:20px}.theme-menu>summary::-webkit-details-marker{display:none}.theme-avatar{display:grid;place-items:center;width:23px;height:23px;border-radius:50%;background:#273d60;color:#a3c6ff}.theme-popover{position:absolute;right:0;top:48px;width:285px;padding:22px;border-radius:14px;background:#172337;border:1px solid #3b4b67;box-shadow:0 15px 40px #0003;color:#e7edf7}.theme-popover p{font-size:11px;line-height:1.7;color:#9baac0}.theme-popover h2{font-size:16px}.theme-popover label{display:block;font-size:12px;margin:16px 0 8px}.theme-popover select{width:100%;max-width:none}.theme-popover [role=status]{margin:12px 0 0}
+:root[data-theme=classic-light],:root[data-theme=pastel-diary]{color-scheme:light;--paper:#fff;--canvas:#f2f5f9;--ink:#26364b;--muted:#62748a;--line:#dce3ec;--accent:#285d9e;--soft:#edf3fa;color:var(--ink);background:var(--canvas)}
+:root[data-theme=pastel-diary]{--paper:#fffcf7;--canvas:#f9eff3;--cover:#e8b8ca;--ink:#4b3d44;--muted:#87777f;--line:#e7d6d9;--accent:#8d5068;--soft:#fff3f6;--income:#2563eb;--expense:#dc5267;--balance:#0f766e}
+:root:is([data-theme=classic-light],[data-theme=pastel-diary]) :is(.panel,.kpi,.sidebar,header,.theme-popover,dialog.modal){background:var(--paper);border-color:var(--line);color:var(--ink)}
+:root:is([data-theme=classic-light],[data-theme=pastel-diary]) :is(button,.button,input,select,textarea,.field input){background:var(--paper);border-color:var(--line);color:var(--ink);color-scheme:light}
+:root:is([data-theme=classic-light],[data-theme=pastel-diary]) :is(button,.button):hover{background:var(--soft)}
+:root:is([data-theme=classic-light],[data-theme=pastel-diary]) .primary{background:var(--accent)!important;border-color:var(--accent)!important}
+:root:is([data-theme=classic-light],[data-theme=pastel-diary]) :is(h1,h2,h3,.brand,.user-card,.kpi-top,td,.ranking-content>span,.expense-ranking strong){color:var(--ink)}
+:root:is([data-theme=classic-light],[data-theme=pastel-diary]) :is(.muted,.small,.cell-sub,.header-label,.header-right,.panel-heading p,.kpi small,.eyebrow,.field,.table-empty,.chart-scale,.bar-label,.legend,.theme-popover p,.diary-ratio-body small){color:var(--muted)}
+:root:is([data-theme=classic-light],[data-theme=pastel-diary]) :is(a,.sidebar nav>a.active){color:var(--accent)}
+:root:is([data-theme=classic-light],[data-theme=pastel-diary]) :is(th,.environment-banner,.pill,.notice,.opening-note,.pagination,.report-tabs button.selected,.closing-badge,.ranking-number){background:var(--soft);border-color:var(--line);color:var(--accent)}
+:root:is([data-theme=classic-light],[data-theme=pastel-diary]) :is(td,th,footer,.security,.user-card,.panel,.kpi,.sidebar){border-color:var(--line)}
+:root:is([data-theme=classic-light],[data-theme=pastel-diary]) .income-text{color:#2563eb}
+:root:is([data-theme=classic-light],[data-theme=pastel-diary]) .expense-text{color:#dc5267}
+:root:is([data-theme=classic-light],[data-theme=pastel-diary]) .balance-warning{background:#fff7df;color:#806326;border-color:#ecdcae}
+:root:is([data-theme=classic-light],[data-theme=pastel-diary]) .type-tag.income{color:#2563eb;background:#edf5ff;border-color:#c8def7}
+:root:is([data-theme=classic-light],[data-theme=pastel-diary]) .type-tag.expense{color:#b63b56;background:#fff0f3;border-color:#f0ccd6}
+:root:is([data-theme=classic-light],[data-theme=pastel-diary]) .bar-chart-plot{border-color:var(--line);background-image:linear-gradient(to top,transparent calc(100% - 1px),var(--line) 1px)}
+:root:is([data-theme=classic-light],[data-theme=pastel-diary]) .income-bar{background:#8eb8ec}
+:root:is([data-theme=classic-light],[data-theme=pastel-diary]) .expense-bar{background:#e6a4b6}
+:root:is([data-theme=classic-light],[data-theme=pastel-diary]) .bar-month{background:transparent;border:0}
+:root:is([data-theme=classic-light],[data-theme=pastel-diary]) .bar-month.highlight{background:var(--soft)}
+:root:is([data-theme=classic-light],[data-theme=pastel-diary]) .error{color:#a72b45;background:#fff0f3}
+:root:is([data-theme=classic-light],[data-theme=pastel-diary]) .theme-avatar{background:var(--soft);color:var(--accent)}
+/* Totals need an opaque theme surface, including the horizontally sticky footer. */
+:root:is([data-theme=classic-light],[data-theme=pastel-diary]) :is(.report-money-table,.account-matrix) tfoot,
+:root:is([data-theme=classic-light],[data-theme=pastel-diary]) .account-matrix .matrix-total{background:var(--soft);color:var(--ink);font-weight:700}
+:root:is([data-theme=classic-light],[data-theme=pastel-diary]) :is(.report-money-table,.account-matrix) tfoot :is(th,td){background:var(--soft)!important;color:var(--ink);border-color:var(--line);font-weight:700}
+:root:is([data-theme=classic-light],[data-theme=pastel-diary]) .account-matrix .matrix-total a{color:var(--accent);font-weight:700}
+:root:is([data-theme=classic-light],[data-theme=pastel-diary]) .report-money-table tfoot .income-text{color:#2563eb}
+:root:is([data-theme=classic-light],[data-theme=pastel-diary]) .report-money-table tfoot .expense-text{color:#dc5267}
+:root:is([data-theme=classic-light],[data-theme=pastel-diary]) .annual-equation{border-color:var(--line)}
+:root:is([data-theme=classic-light],[data-theme=pastel-diary]) .annual-equation :is(span,b){color:var(--muted)}
+:root:is([data-theme=classic-light],[data-theme=pastel-diary]) .annual-equation strong{color:var(--ink)}
+:root[data-theme=pastel-diary] body{background:radial-gradient(ellipse at 8% 10%,#f6dce6,transparent 45%),radial-gradient(ellipse at 100% 90%,#f2e0ed,transparent 55%),var(--canvas)}
+:root[data-theme=pastel-diary] .sidebar{width:198px;background:#fff9fbcc;padding:26px 12px;border-color:#e8cdd7}
+:root[data-theme=pastel-diary] .sidebar nav>a{font-size:12px;color:#87777f;padding:11px}
+:root[data-theme=pastel-diary] .sidebar nav>a.active{background:#f7e4ec;box-shadow:inset 3px 0 #b96988}
+:root[data-theme=pastel-diary] .brand{font-size:16px;gap:9px}:root[data-theme=pastel-diary] .brand-icon{flex-shrink:0}
+:root[data-theme=pastel-diary] .brand-icon{background:#b96988;box-shadow:0 4px 12px #b9698820}
+:root[data-theme=pastel-diary] .main-area{margin-left:198px}
+:root[data-theme=pastel-diary] header{background:#fff9fbdd;border-color:#e8cdd7;padding:0 26px;height:74px}
+:root[data-theme=pastel-diary] main{max-width:1660px;padding:18px 100px 35px 28px}
+:root[data-theme=pastel-diary] .environment-banner{font-size:10px;margin-bottom:18px;background:#fff8fbd9;border-color:#ecd7df;color:#8b6978}
+:root[data-theme=pastel-diary] .dashboard-book{display:grid;grid-template-columns:minmax(0,1fr) 40px minmax(0,1fr);gap:0 0;position:relative;isolation:isolate;min-height:800px;padding:30px 28px 60px;border:1px solid #c88da4;border-radius:28px;background:linear-gradient(90deg,#fff9f2 0%,#fffcf7 47%,#e8dbd5 49%,#f4e9e1 51%,#fffcf7 53%);box-shadow:0 0 0 8px #e8b8ca,0 0 0 10px #c891a6,0 18px 40px #8d50682a;animation:diary-open .32s ease-out;align-content:start}
+:root[data-theme=pastel-diary] .dashboard-book:before{content:"";position:absolute;inset:12px;border:1px dashed #e7c8d2;border-radius:19px;pointer-events:none;z-index:-1;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%238d5068' opacity='.035' filter='url(%23n)' d='M0 0h160v160H0z'/%3E%3C/svg%3E")}
+:root[data-theme=pastel-diary] .dashboard-book>.page-heading{grid-column:1;grid-row:2;margin:12px 0 18px;align-self:start;padding-right:10px}
+:root[data-theme=pastel-diary] .dashboard-book h1{font-size:25px;color:#8d5068;letter-spacing:-1px}
+:root[data-theme=pastel-diary] .dashboard-book>.page-heading .eyebrow{display:none}
+:root[data-theme=pastel-diary] .dashboard-book>.page-heading p{font-size:11px}
+:root[data-theme=pastel-diary] .diary-title-strip{display:flex;justify-content:space-between;grid-column:1/-1;grid-row:1;font-size:9px;letter-spacing:2px;color:#a27b8c;padding-bottom:15px;border-bottom:1px solid #ead8df;margin-bottom:4px}
+:root[data-theme=pastel-diary] .dashboard-period{grid-column:1;grid-row:3;flex-wrap:wrap;gap:8px;margin:0 0 20px;font-size:11px}
+:root[data-theme=pastel-diary] .dashboard-period select{font-size:11px;max-width:135px}
+:root[data-theme=pastel-diary] .diary-summary{grid-column:1;grid-row:4}
+:root[data-theme=pastel-diary] .diary-section-label{display:block;color:#8d5068;font-weight:650;font-size:12px;margin:0 0 13px;letter-spacing:.3px}
+:root[data-theme=pastel-diary] .summary-kpis{grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:9px;margin-bottom:18px}
+:root[data-theme=pastel-diary] .summary-kpis .kpi{grid-column:span 2;padding:14px 11px;border-radius:5px 11px 8px 6px;box-shadow:1px 3px 4px #8d50680b;background:#fff5ed;border-color:#ecddcf;position:relative}
+:root[data-theme=pastel-diary] .summary-kpis .kpi:nth-child(2){background:#eef5ff;border-color:#c9ddf4}
+:root[data-theme=pastel-diary] .summary-kpis .kpi:nth-child(3){background:#fff0f3;border-color:#efc9d4}
+:root[data-theme=pastel-diary] .summary-kpis .kpi:nth-child(n+4){grid-column:span 3;background:#eff8f0;border-color:#cde3d0}
+:root[data-theme=pastel-diary] .summary-kpis .kpi-top{font-size:10px;gap:4px}
+:root[data-theme=pastel-diary] .summary-kpis .metric-icon{width:23px;height:23px;background:transparent;color:#aa7890}
+:root[data-theme=pastel-diary] .summary-kpis .ledger-amount{font-size:clamp(16px,1.4vw,23px);letter-spacing:-.7px;margin:13px 0 8px;color:#8d5068;white-space:normal}
+:root[data-theme=pastel-diary] .summary-kpis .kpi:nth-child(2) .ledger-amount{color:#2563eb}
+:root[data-theme=pastel-diary] .summary-kpis .kpi:nth-child(3) .ledger-amount{color:#dc5267}
+:root[data-theme=pastel-diary] .summary-kpis .kpi:nth-child(n+4) .ledger-amount{color:#0f766e}
+:root[data-theme=pastel-diary] .summary-kpis small{font-size:9px}
+:root[data-theme=pastel-diary] .finance-dashboard-grid{display:contents}
+:root[data-theme=pastel-diary] .dashboard-book .panel{border:1px solid #efdedc;background:#ffffff60;border-radius:13px;min-width:0;box-shadow:0 3px 12px #8d506805}
+:root[data-theme=pastel-diary] .dashboard-book .panel-heading{padding:18px 17px 12px;align-items:start}
+:root[data-theme=pastel-diary] .dashboard-book h2{font-size:13px;color:#8d5068}
+:root[data-theme=pastel-diary] .dashboard-book .panel-heading p{font-size:10px;line-height:1.6}
+:root[data-theme=pastel-diary] .diary-monthly{grid-column:1;grid-row:5;margin-bottom:16px}
+:root[data-theme=pastel-diary] .diary-monthly .monthly-chart{height:240px;padding:12px 16px 28px 45px}
+:root[data-theme=pastel-diary] .diary-monthly .bar-chart-plot{min-width:360px}
+:root[data-theme=pastel-diary] .diary-monthly .green-dot{background:#8eb8ec}
+:root[data-theme=pastel-diary] .diary-monthly .orange-dot{background:#e6a4b6}
+:root[data-theme=pastel-diary] .diary-recent{grid-column:3;grid-row:2/5;margin:12px 0 18px;align-self:stretch}
+:root[data-theme=pastel-diary] .diary-recent .table-scroll{max-height:440px;overflow:auto}
+:root[data-theme=pastel-diary] .diary-recent table{font-size:10px;white-space:normal;min-width:520px}
+:root[data-theme=pastel-diary] .diary-recent th{font-size:10px;background:#fff3f6;padding:12px 9px;position:sticky;top:0;z-index:1}
+:root[data-theme=pastel-diary] .diary-recent td{padding:12px 9px}
+:root[data-theme=pastel-diary] .diary-recent .description-cell{min-width:90px;max-width:150px}
+:root[data-theme=pastel-diary] .diary-recent .money{white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums}
+:root[data-theme=pastel-diary] .diary-expenses{grid-column:3;grid-row:5;margin-bottom:16px}
+:root[data-theme=pastel-diary] .expense-ranking button{padding:10px 14px;background:transparent;border-color:#eddfe3}
+:root[data-theme=pastel-diary] .expense-ranking strong{font-size:13px}
+:root[data-theme=pastel-diary] .ranking-track{background:#f4e8ed}
+:root[data-theme=pastel-diary] .ranking-track>span{background:#d99db4}
+:root[data-theme=pastel-diary] .diary-ratio{display:block;grid-column:1;grid-row:6}
+:root[data-theme=pastel-diary] .diary-ratio-body{display:flex;gap:22px;align-items:center;padding:8px 20px 24px;font-size:12px}
+:root[data-theme=pastel-diary] .diary-ratio-body small{font-size:10px}
+:root[data-theme=pastel-diary] .diary-donut{width:115px;height:115px;border-radius:50%;display:grid;place-items:center;flex-shrink:0}
+:root[data-theme=pastel-diary] .diary-donut>span{background:#fffcf7;width:77px;height:77px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:23px;color:#8d5068;font-variant-numeric:tabular-nums}
+:root[data-theme=pastel-diary] .diary-donut small{font-size:9px;margin-top:3px}
+:root[data-theme=pastel-diary] .diary-status{display:block;grid-column:3;grid-row:6;background:#fff9e9}
+:root[data-theme=pastel-diary] .diary-month-stamps{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;padding:4px 17px 20px}
+:root[data-theme=pastel-diary] .diary-month-stamps>span{padding:8px 2px;border:1px solid #e8dad1;border-radius:6px;text-align:center;font-size:11px}
+:root[data-theme=pastel-diary] .diary-month-stamps small{display:block;font-size:8px;margin-top:6px;color:#938582}
+:root[data-theme=pastel-diary] .diary-month-stamps .closed{background:#e6f1e5;border-color:#b6d0b4;color:#39713e}
+:root[data-theme=pastel-diary] .diary-binder{display:flex;position:absolute;left:calc(50% - 25px);width:50px;top:90px;bottom:75px;flex-direction:column;justify-content:space-between;pointer-events:none;z-index:3}
+:root[data-theme=pastel-diary] .diary-binder i{height:23px;width:58px;margin-left:-4px;border:5px solid #b5a28c;border-bottom-color:#e2d8cd;border-top-color:#8a7a67;border-radius:50%;box-shadow:0 5px 3px #745a5333,inset 0 2px 3px #fff;background:linear-gradient(180deg,#fff9,transparent);position:relative}
+:root[data-theme=pastel-diary] .diary-binder i:before,:root[data-theme=pastel-diary] .diary-binder i:after{content:"";position:absolute;top:1px;left:-9px;width:8px;height:12px;background:#8f786b;border-radius:50%;z-index:-1;box-shadow:inset 1px 1px 3px #493b36}
+:root[data-theme=pastel-diary] .diary-binder i:after{left:auto;right:-9px}
+:root[data-theme=pastel-diary] .diary-index{display:flex;gap:7px;position:absolute;top:70px;left:100%;width:78px;z-index:-2}
+:root[data-theme=pastel-diary] .diary-index a{display:flex;flex-direction:column;gap:4px;align-items:start;justify-content:center;padding:12px 8px 12px 13px;min-height:60px;background:var(--tab-color);border:1px solid #c998aa66;border-radius:0 12px 12px 0;color:#674957;font-weight:650;font-size:10px;box-shadow:2px 3px 2px #8d50681a;transition:transform .25s}
+:root[data-theme=pastel-diary] .diary-index a small{font-size:8px;font-weight:400}
+:root[data-theme=pastel-diary] .diary-index a:is(.selected,:hover){transform:translateX(6px);box-shadow:3px 4px 5px #8d50682a}
+:root[data-theme=pastel-diary] .diary-flower{display:block;position:absolute;top:-21px;left:-19px;color:#dba0b7;font-size:59px;line-height:1;text-shadow:2px 3px #fff8;transform:rotate(-16deg);pointer-events:none}
+:root[data-theme=pastel-diary] .diary-flower span{font-size:22px;vertical-align:top;color:#b0b99b}
+:root[data-theme=pastel-diary] .diary-bookmark{display:block;position:absolute;top:-10px;right:40px;width:29px;height:60px;background:#d39aaf;color:white;font-size:25px;text-align:center;padding-top:12px;clip-path:polygon(0 0,100% 0,100% 100%,50% 85%,0 100%);pointer-events:none}
+:root[data-theme=pastel-diary] .diary-page-numbers{display:flex;justify-content:space-between;position:absolute;bottom:25px;left:30px;right:30px;color:#b18e9c;font-size:9px;letter-spacing:1px;pointer-events:none}
+:root[data-theme=pastel-diary] .dashboard-book>.error{grid-column:1/-1}
+@keyframes diary-open{from{opacity:.75;transform:translateY(5px) rotateX(1deg)}to{opacity:1;transform:none}}
+@media(min-width:1800px){:root[data-theme=pastel-diary] main{padding-right:110px;padding-left:40px}}
+@media(max-width:1200px){:root[data-theme=pastel-diary] .sidebar{width:175px}:root[data-theme=pastel-diary] .main-area{margin-left:175px}:root[data-theme=pastel-diary] main{padding-left:22px;padding-right:90px}:root[data-theme=pastel-diary] .dashboard-book{padding:25px 20px 55px;grid-template-columns:minmax(0,1fr) 34px minmax(0,1fr)}:root[data-theme=pastel-diary] .summary-kpis .kpi-top{font-size:9px}:root[data-theme=pastel-diary] .summary-kpis .metric-icon{display:none}:root[data-theme=pastel-diary] .summary-kpis .ledger-amount{font-size:17px}:root[data-theme=pastel-diary] .diary-ratio-body{gap:13px;padding:8px 14px 20px}:root[data-theme=pastel-diary] .diary-donut{width:90px;height:90px}:root[data-theme=pastel-diary] .diary-donut>span{width:60px;height:60px}}
+@media(max-width:1000px){:root[data-theme=pastel-diary] .dashboard-book{display:flex;flex-direction:column;gap:16px;background:var(--paper)}:root[data-theme=pastel-diary] .dashboard-book:before{inset:10px}:root[data-theme=pastel-diary] .diary-binder{display:none}:root[data-theme=pastel-diary] .diary-index{top:60px}:root[data-theme=pastel-diary] .diary-title-strip{order:0}:root[data-theme=pastel-diary] .dashboard-book>.page-heading{order:1;margin:0}:root[data-theme=pastel-diary] .dashboard-period{order:2;margin:0}:root[data-theme=pastel-diary] .diary-summary{order:3}:root[data-theme=pastel-diary] .diary-monthly{order:4}:root[data-theme=pastel-diary] .diary-recent{order:5;margin:0}:root[data-theme=pastel-diary] .diary-expenses{order:6}:root[data-theme=pastel-diary] .diary-ratio{order:7}:root[data-theme=pastel-diary] .diary-status{order:8}:root[data-theme=pastel-diary] .summary-kpis .ledger-amount{font-size:23px}:root[data-theme=pastel-diary] .header-left .muted{display:none}}
+@media(max-width:650px){.theme-menu>summary>span:nth-child(2){display:none}.theme-popover{right:-40px;width:270px}.header-right>.status-dot{display:none}:root[data-theme=pastel-diary] .sidebar{width:240px}:root[data-theme=pastel-diary] .main-area{margin-left:0}:root[data-theme=pastel-diary] header{padding:0 12px;height:68px}:root[data-theme=pastel-diary] main{padding:15px 17px 85px}:root[data-theme=pastel-diary] .environment-banner{font-size:9px}:root[data-theme=pastel-diary] .dashboard-book{padding:25px 15px 50px;border-radius:19px;min-height:0}:root[data-theme=pastel-diary] .diary-title-strip{font-size:8px;letter-spacing:1px}:root[data-theme=pastel-diary] .diary-title-strip span:last-child{display:none}:root[data-theme=pastel-diary] .diary-index{position:fixed;top:auto;bottom:0;left:0;width:100%;flex-direction:row;overflow-x:auto;gap:5px;padding:8px;background:#fff9fbf5;border-top:1px solid #e7d6d9;z-index:35}:root[data-theme=pastel-diary] .diary-index a{min-height:43px;min-width:65px;padding:6px 8px;border-radius:8px;align-items:center;flex-shrink:0}:root[data-theme=pastel-diary] .diary-index a:is(.selected,:hover){transform:translateY(-2px)}:root[data-theme=pastel-diary] .diary-index a small{font-size:7px}:root[data-theme=pastel-diary] .diary-flower{font-size:43px;top:-16px;left:-10px}:root[data-theme=pastel-diary] .diary-bookmark{right:25px;height:47px;font-size:20px}:root[data-theme=pastel-diary] .summary-kpis{grid-template-columns:1fr 1fr!important}:root[data-theme=pastel-diary] .summary-kpis .kpi,:root[data-theme=pastel-diary] .summary-kpis .kpi:nth-child(n+4){grid-column:auto}:root[data-theme=pastel-diary] .summary-kpis .kpi:last-child{grid-column:span 2}:root[data-theme=pastel-diary] .summary-kpis .ledger-amount{font-size:21px}:root[data-theme=pastel-diary] .diary-monthly .monthly-chart{padding-left:35px}:root[data-theme=pastel-diary] .dashboard-period .small{font-size:9px}:root[data-theme=pastel-diary] .diary-page-numbers{font-size:7px;left:18px;right:18px;letter-spacing:0}:root[data-theme=pastel-diary] .diary-month-stamps{gap:5px}}
+@media(prefers-reduced-motion:reduce){:root[data-theme=pastel-diary] .dashboard-book{animation:none}:root[data-theme=pastel-diary] .diary-index a{transition:none}}

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { dateSchema, openingBalanceInput, transactionCreateInput, transactionUpdateInput, transactionDeleteInput, type Control, type Transaction, type User } from './schema';
 import { ApiError, type Repository } from './store';
 import { requireAdmin, requireDepartment } from './policy';
+import { workbook } from './xlsx';
 
 const json = (data: unknown, status = 200) => Response.json({ success: true, data }, { status });
 export function safeNumber(value: bigint): number {
@@ -108,7 +109,7 @@ export async function handleLedger(args: { path: string; method: string; url: UR
     if (!state.transactionRefs.some(r => r.id === input.id && r.departmentId === input.departmentId)) throw new ApiError(404, 'TRANSACTION_NOT_FOUND', '거래를 찾을 수 없습니다.');
     return json(state.audit.filter(a => a.entityType === 'TRANSACTION' && a.entityId === input.id && a.departmentId === input.departmentId).map(a => ({ ...a, actorName: state.users.find(u => u.id === a.actorUserId)?.displayName ?? '알 수 없음' })));
   }
-  if (path === '/api/transactions' && method === 'GET') {
+  if (['/api/transactions','/api/transactions/export.xlsx'].includes(path) && method === 'GET') {
     const input = querySchema.parse(Object.fromEntries(url.searchParams));
     requireDepartment(state, user, input.departmentId);
     if (input.accountId && !state.accounts.some(a => a.id === input.accountId && a.departmentId === input.departmentId)) throw new ApiError(403, 'ACCOUNT_ACCESS_DENIED', '조회 계정이 해당 부서에 속하지 않습니다.');
@@ -116,7 +117,15 @@ export async function handleLedger(args: { path: string; method: string; url: UR
     const filtered = all.filter(t => t.date >= input.from && t.date <= input.to && (input.includeDeleted === '1' || t.status === 'ACTIVE') && (!input.type || t.type === input.type) && (!input.accountId || t.accountId === input.accountId) && (!input.keyword || `${t.description} ${t.remark}`.toLocaleLowerCase().includes(input.keyword.toLocaleLowerCase())));
     filtered.sort((a,b) => (input.sort === 'date_asc' ? 1 : -1) * (a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id)));
     const { opening, balance, carryForward } = periodBalances(state, input.departmentId, all, input.from, input.to);
-    const items = filtered.slice((input.page - 1) * input.pageSize, input.page * input.pageSize).map(t => ({ ...t, account: state.accounts.find(a => a.id === t.accountId), createdByName: state.users.find(u => u.id === t.createdBy)?.displayName ?? '', updatedByName: state.users.find(u => u.id === t.updatedBy)?.displayName ?? '' }));
+    const balances=new Map<string,number>();
+    if(opening){let running=BigInt(opening.amount);for(const tx of all.filter(t=>t.status==='ACTIVE'&&t.date>=opening.date).sort((a,b)=>a.date.localeCompare(b.date)||a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id))){running+=tx.type==='INCOME'?BigInt(tx.amount):-BigInt(tx.amount);balances.set(tx.id,safeNumber(running));}}
+    if(path.endsWith('/export.xlsx')){
+      const sum=totals(filtered),dept=state.departments.find(d=>d.id===input.departmentId)!;
+      const rows:(string|number|null)[][]=[['부서',dept.name],['조회기간',input.from,input.to],['이월금액',carryForward],['수입 합계',sum.income,'지출 합계',sum.expense,'기간말 잔액',balance],['잔액 기준','전체 부서 거래 누적 · 검색필터 제외 · 동일 일자는 생성시각/ID 순'],['거래일','구분','계정코드','계정명','적요','수입','지출','거래 후 잔액','비고','상태','작성자']];
+      for(const tx of filtered){const account=state.accounts.find(a=>a.id===tx.accountId)!;rows.push([tx.date,tx.type==='INCOME'?'수입':'지출',account.code,account.name,tx.description,tx.type==='INCOME'?tx.amount:0,tx.type==='EXPENSE'?tx.amount:0,balances.get(tx.id)??null,tx.remark,tx.status==='ACTIVE'?'활성':'삭제',state.users.find(u=>u.id===tx.createdBy)?.displayName??'']);}
+      return new Response(new Uint8Array(workbook(rows)),{headers:{'content-type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','content-disposition':`attachment; filename="ledger-${input.from}-${input.to}.xlsx"`}});
+    }
+    const items = filtered.slice((input.page - 1) * input.pageSize, input.page * input.pageSize).map(t => ({ ...t, runningBalance:balances.get(t.id)??null, account: state.accounts.find(a => a.id === t.accountId), createdByName: state.users.find(u => u.id === t.createdBy)?.displayName ?? '', updatedByName: state.users.find(u => u.id === t.updatedBy)?.displayName ?? '' }));
     return json({ items, total: filtered.length, page: input.page, pageSize: input.pageSize, totals: totals(filtered), carryForward, balance, openingBalance: opening, revision: state.revision, accounts: state.accounts.filter(a => a.departmentId === input.departmentId).sort((a,b) => a.sortOrder - b.sortOrder || a.code.localeCompare(b.code)), closedPeriods: state.closings.filter(c => c.departmentId === input.departmentId && c.status === 'CLOSED').map(c => c.period) });
   }
   if (path === '/api/admin/opening-balances' && method === 'POST') {

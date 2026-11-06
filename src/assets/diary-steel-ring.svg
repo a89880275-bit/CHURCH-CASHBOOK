@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="84" height="38" viewBox="0 0 84 38">
+ <defs>
+  <linearGradient id="steel" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fefefe"/><stop offset=".2" stop-color="#c6cbd0"/><stop offset=".4" stop-color="#fff"/><stop offset=".56" stop-color="#959ca3"/><stop offset=".73" stop-color="#e5e8eb"/><stop offset="1" stop-color="#646b73"/></linearGradient>
+  <linearGradient id="rim"><stop stop-color="#77604b"/><stop offset=".4" stop-color="#d3b38d"/><stop offset=".65" stop-color="#f1d9b8"/><stop offset="1" stop-color="#8a6745"/></linearGradient>
+  <filter id="shadow" x="-30%" y="-50%" width="160%" height="220%"><feGaussianBlur stdDeviation="1.6"/></filter>
+ </defs>
+ <ellipse cx="12" cy="23" rx="8" ry="9" fill="url(#rim)"/><ellipse cx="72" cy="23" rx="8" ry="9" fill="url(#rim)"/>
+ <ellipse cx="12" cy="23" rx="4.5" ry="6" fill="#6b503b"/><ellipse cx="72" cy="23" rx="4.5" ry="6" fill="#6b503b"/>
+ <path d="M12 25C-1 9 85 9 72 25" fill="none" stroke="#57473d" stroke-width="9" opacity=".3" filter="url(#shadow)" transform="translate(0 3)"/>
+ <path d="M12 23C-1 5 85 5 72 23" fill="none" stroke="#72787e" stroke-width="8.5" stroke-linecap="round"/>
+ <path d="M12 22C-1 4 85 4 72 22" fill="none" stroke="url(#steel)" stroke-width="7.3" stroke-linecap="round"/>
+ <path d="M12 19C9 9 72 8 74 18" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" opacity=".9"/>
+ <path d="M16 22C29 16 57 16 69 21" fill="none" stroke="#858c93" stroke-width=".8" opacity=".65"/>
+</svg>

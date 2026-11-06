@@ -1,10 +1,12 @@
 import { z } from 'zod';
+import { themes } from '../shared/theme';
 
 const text = (max: number) => z.string().trim().min(1).max(max);
 export const userSchema = z.object({
   id: z.uuid(), subject: text(255), loginId: text(80).regex(/^[a-zA-Z0-9._-]+$/),
   displayName: text(80), role: z.enum(['ADMIN', 'ACCOUNTANT']),
   status: z.enum(['ACTIVE', 'DISABLED']), createdAt: z.iso.datetime(),
+  theme: z.enum(themes).optional(),
 }).strict();
 export const departmentSchema = z.object({
   id: z.uuid(), code: text(30), name: text(100),

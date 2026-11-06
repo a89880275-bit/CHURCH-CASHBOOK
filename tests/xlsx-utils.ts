@@ -1,0 +1,2 @@
+import { inflateRawSync } from 'node:zlib';
+export function unzip(data:Buffer){const files:Record<string,string>={};let offset=0;while(data.readUInt32LE(offset)===0x04034b50){const length=data.readUInt32LE(offset+18),nameLength=data.readUInt16LE(offset+26),extraLength=data.readUInt16LE(offset+28),name=data.subarray(offset+30,offset+30+nameLength).toString(),start=offset+30+nameLength+extraLength;files[name]=inflateRawSync(data.subarray(start,start+length)).toString();offset=start+length;}return files;}
