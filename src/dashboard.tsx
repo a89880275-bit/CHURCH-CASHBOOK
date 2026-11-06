@@ -1,0 +1,29 @@
+import { useContext, useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Building2, ChevronRight, RefreshCw, Wallet } from 'lucide-react';
+import { api, ApiFailure, Session } from './client';
+import { currentPeriod, periodRange, type ManagementPeriod } from '../shared/period';
+import { ledgerLink } from '../shared/ledger-link';
+import { PeriodPicker } from './period-picker';
+import { PageTitle } from './components';
+import { SummaryCards, MonthlyChart, Legend, money } from './report-components';
+import type { DashboardReport } from './report-types';
+
+export function DashboardPage() {
+  const {me,department,refresh}=useContext(Session),navigate=useNavigate();
+  const configured=me.departments.find(d=>d.id===department)?.managementPeriod??'MONTHLY';
+  const [allMode,setAllMode]=useState<ManagementPeriod>('MONTHLY'),mode=department?configured:allMode;
+  const [range,setRange]=useState(()=>currentPeriod(mode)),[stored,setStored]=useState<{key:string;data:DashboardReport}|null>(null),[loading,setLoading]=useState(false),[error,setError]=useState(''),[reload,setReload]=useState(0);
+  const scope=`${department}:${mode}`,previous=useRef(scope),key=`${scope}:${range.from}:${range.to}`,data=stored?.key===key?stored.data:null;
+  const year=Number(range.from.slice(0,4));
+  useEffect(()=>{
+    if(previous.current!==scope){previous.current=scope;setRange(currentPeriod(mode));setStored(null);return;}
+    if(!department&&me.user.role!=='ADMIN'){setStored(null);return;}
+    let cancelled=false;setLoading(true);setError('');
+    const params=new URLSearchParams({...range,year:String(year)});if(department)params.set('departmentId',department);
+    api<DashboardReport>('/reports/dashboard?'+params).then(result=>{if(!cancelled)setStored({key,data:result});}).catch(e=>{if(!cancelled){setStored(null);setError(e.message);if(e instanceof ApiFailure&&e.status===403)void refresh();}}).finally(()=>{if(!cancelled)setLoading(false);});
+    return()=>{cancelled=true;};
+  },[scope,range,me.revision,reload]);
+  function monthClick(month:number){if(department)navigate(ledgerLink(department,periodRange('MONTHLY',year,month)));else navigate(`/reports?tab=departments&year=${year}&month=${month}`);}
+  return <><PageTitle eyebrow="OVERVIEW" title="회계 대시보드" description={`${me.departments.find(d=>d.id===department)?.name??'전체 부서'}의 재정 흐름을 원본 거래 기준으로 확인합니다.`}/><div className="dashboard-period"><PeriodPicker mode={mode} from={range.from} onChange={setRange}/>{!department&&me.user.role==='ADMIN'&&<label className="all-period-label">전체 부서 조회 기준<select value={allMode} onChange={e=>setAllMode(e.target.value as ManagementPeriod)}><option value="MONTHLY">월별</option><option value="YEARLY">연도별</option></select></label>}<span className="muted small">{range.from} ~ {range.to}</span><button aria-label="대시보드 새로 조회" className="icon-button" disabled={loading} onClick={()=>setReload(n=>n+1)}><RefreshCw size={17} className={loading?'spin':''}/></button></div>{error&&<p className="error" role="alert">{error}</p>}{!department&&me.user.role!=='ADMIN'?<section className="panel empty-page"><Building2/><h2>배정된 부서가 없습니다</h2><p>관리자에게 부서 배정을 요청하세요.</p></section>:<><SummaryCards summary={data?.summary??null} loading={loading}/><div className="finance-dashboard-grid"><section className="panel"><div className="panel-heading"><div><h2>{year}년 월별 수입·지출</h2><p>월을 클릭하면 해당 기간의 상세 장부로 이동합니다.</p></div><Legend/></div>{data?<MonthlyChart rows={data.monthly} year={year} onMonth={monthClick} selectedMonth={mode==='MONTHLY'?Number(range.from.slice(5,7)):undefined}/>:<div className="table-empty">{loading?'월별 거래를 계산하고 있습니다.':'차트를 표시할 수 없습니다.'}</div>}</section><section className="panel"><div className="panel-heading"><div><h2>계정별 지출 상위 5개</h2><p>{range.from} ~ {range.to} · 활성 지출</p></div></div><div className="expense-ranking">{data?.topExpenses.map((item,index)=><button key={item.accountId} onClick={()=>navigate(ledgerLink(item.departmentId,{...range,accountId:item.accountId,type:'EXPENSE'}))}><span className="ranking-number">{index+1}</span><span className="ranking-content"><span>{item.name}<small>{item.code}{!department?` · ${item.departmentName}`:''}</small></span><span className="ranking-track"><span style={{width:`${data.summary.expense?item.amount/data.summary.expense*100:0}%`}}/></span></span><strong>{money(item.amount)}<small>원</small></strong><ChevronRight size={14}/></button>)}{data&&!data.topExpenses.length&&<div className="table-empty"><Wallet/><p>선택 기간의 지출이 없습니다.</p></div>}{!data&&<div className="table-empty">{loading?'지출 집계 중입니다.':'자료가 없습니다.'}</div>}</div></section></div><section className="panel recent"><div className="panel-heading"><div><h2>최근 거래 10건</h2><p>선택 기간의 활성 거래 · 거래일 최신순</p></div><Link to={department?ledgerLink(department,range):'/reports?tab=departments&year='+year}>장부 보기<ChevronRight size={15}/></Link></div><div className="table-scroll"><table><thead><tr><th>거래일</th>{!department&&<th>부서</th>}<th>유형</th><th>계정</th><th>적요</th><th className="money">금액</th><th>작성자</th><th>조회</th></tr></thead><tbody>{data?.recentTransactions.map(t=><tr key={t.id}><td>{t.date}</td>{!department&&<td>{t.departmentName}</td>}<td><span className={'type-tag '+(t.type==='INCOME'?'income':'expense')}>{t.type==='INCOME'?'수입':'지출'}</span></td><td>{t.accountName}<small className="cell-sub">{t.accountCode}</small></td><td className="description-cell">{t.description}</td><td className={'money '+(t.type==='INCOME'?'income-text':'expense-text')}>{money(t.amount)}</td><td>{t.createdByName}</td><td><Link to={ledgerLink(t.departmentId,{from:t.date,to:t.date})}>장부<ChevronRight size={12}/></Link></td></tr>)}</tbody></table>{data&&!data.recentTransactions.length&&<div className="table-empty"><Wallet/><h3>선택 기간에 거래가 없습니다</h3><p>기간을 변경하거나 장부에서 첫 거래를 등록하세요.</p></div>}{!data&&<div className="table-empty">{loading?'거래를 불러오는 중입니다.':'거래를 표시할 수 없습니다.'}</div>}</div></section></>}</>;
+}
