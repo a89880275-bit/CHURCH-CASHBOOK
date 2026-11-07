@@ -106,8 +106,8 @@ describe('ledger API backed by immutable per-transaction JSON', () => {
     expect(results.map(r => r.stdout)).toEqual(['COMMITTED','COMMITTED']);
     expect((await listing()).totals.income).toBe(246); expect((await listing()).total).toBe(2);
   }, 15000);
-  it('closing introduced between object staging and manifest publication rejects the write', async () => {
-    class Closing extends FileRepository { override async putTransaction(value: Transaction) { const ref = await super.putTransaction(value); await this.updateControl(1, s => { s.closings.push({ id: randomUUID(), departmentId: ids.edu, period: '2026-05', status: 'CLOSED' }); return s; }); return ref; } }
+  it('closing introduced before acquiring the business lock rejects the write', async () => {
+    class Closing extends FileRepository { override async commitLedger(change: (s: Control) => Control | Promise<Control>) { await this.updateControl(1, s => { s.closings.push({ id: randomUUID(), departmentId: ids.edu, period: '2026-05', status: 'CLOSED' }); return s; }); return super.commitLedger(change); } }
     const response = await createApi(new Closing(root), { origin, local: true })(request('/transactions', admin, input()));
     expect(response.status).toBe(409); expect((await repo.control()).transactionRefs).toHaveLength(0);
   });
@@ -228,13 +228,13 @@ describe('ledger API backed by immutable per-transaction JSON', () => {
     expect((await api(request('/admin/opening-balances', admin, { departmentId: ids.edu, date: '2026-01-01', amount: 0, reason: '잔액 정정', expectedRevision: 3 }))).status).toBe(409);
   });
   it('rechecks account status inside the shared commit lock', async () => {
-    class Inactivating extends FileRepository { override async putTransaction(value: Transaction) { const ref = await super.putTransaction(value); await this.updateControl(1, s => { s.accounts[0].status = 'INACTIVE'; return s; }); return ref; } }
+    class Inactivating extends FileRepository { override async commitLedger(change: (s: Control) => Control | Promise<Control>) { await this.updateControl(1, s => { s.accounts[0].status = 'INACTIVE'; return s; }); return super.commitLedger(change); } }
     const racing = createApi(new Inactivating(root), { origin, local: true });
     expect((await racing(request('/transactions', b, input()))).status).toBe(422);
     expect((await listing()).total).toBe(0); expect((await repo.control()).audit).toHaveLength(0);
   });
-  it('rechecks revocation and closings if they happen after the immutable object write', async () => {
-    class Revoking extends FileRepository { override async putTransaction(value: Transaction) { const ref = await super.putTransaction(value); await this.updateControl(1, s => { s.assignments = s.assignments.filter(a => a.departmentId !== ids.edu); return s; }); return ref; } }
+  it('rechecks revocation and closings when they precede business lock acquisition', async () => {
+    class Revoking extends FileRepository { override async commitLedger(change: (s: Control) => Control | Promise<Control>) { await this.updateControl(1, s => { s.assignments = s.assignments.filter(a => a.departmentId !== ids.edu); return s; }); return super.commitLedger(change); } }
     expect((await createApi(new Revoking(root), { origin, local: true })(request('/transactions', b, input()))).status).toBe(403);
     expect((await repo.control()).transactionRefs).toHaveLength(0);
     await repo.updateControl(2, s => { s.closings.push({ id: randomUUID(), departmentId: ids.edu, period: '2026-05', status: 'CLOSED' }); return s; });

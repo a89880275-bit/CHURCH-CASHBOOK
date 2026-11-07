@@ -145,4 +145,9 @@ export class FileRepository implements Repository {
     if (!/^\d+-[a-f0-9]{64}\.json$/.test(name)) throw new Error('Invalid snapshot name');
     return decodeSnapshot(await readFile(join(this.root, 'snapshots', name), 'utf8'));
   }
+  async saveBackup(contents:string){
+    const directory=join(this.root,'backups');await mkdir(directory,{recursive:true,mode:0o700});
+    const name=`${new Date().toISOString().replaceAll(':','-')}-${randomUUID()}.json`,path=join(directory,name);
+    await writeFile(path,contents,{flag:'wx',mode:0o600,flush:true});if(await readFile(path,'utf8')!==contents)throw new ApiError(503,'BACKUP_FAILED','복원 전 백업 검증에 실패했습니다.');return name;
+  }
 }

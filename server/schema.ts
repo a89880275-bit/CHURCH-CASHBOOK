@@ -25,18 +25,21 @@ export const accountSchema = z.object({
 }).strict();
 export const auditSchema = z.object({
   id: z.uuid(), actorUserId: z.uuid(), departmentId: z.uuid().nullable(),
-  entityType: z.enum(['USER', 'DEPARTMENT', 'ACCOUNT', 'ASSIGNMENT', 'STORAGE', 'TRANSACTION', 'OPENING_BALANCE']).optional(), entityId: z.string().optional(),
-  action: z.enum(['ASSIGNMENT_REPLACED', 'USER_CREATED', 'USER_UPDATED', 'DEPARTMENT_CREATED', 'DEPARTMENT_UPDATED', 'ACCOUNT_CREATED', 'ACCOUNT_UPDATED', 'STORAGE_RESTORED', 'TRANSACTION_CREATED', 'TRANSACTION_UPDATED', 'TRANSACTION_DELETED', 'OPENING_BALANCE_SET']),
+  entityType: z.enum(['USER', 'DEPARTMENT', 'ACCOUNT', 'ASSIGNMENT', 'STORAGE', 'TRANSACTION', 'OPENING_BALANCE', 'CLOSING']).optional(), entityId: z.string().optional(),
+  action: z.enum(['ASSIGNMENT_REPLACED', 'USER_CREATED', 'USER_UPDATED', 'DEPARTMENT_CREATED', 'DEPARTMENT_UPDATED', 'ACCOUNT_CREATED', 'ACCOUNT_UPDATED', 'STORAGE_RESTORED', 'TRANSACTION_CREATED', 'TRANSACTION_UPDATED', 'TRANSACTION_DELETED', 'OPENING_BALANCE_SET', 'MONTH_CLOSED', 'MONTH_REOPENED', 'YEAR_CLOSED', 'YEAR_REOPENED']),
   occurredAt: z.iso.datetime(), reason: text(500), before: z.unknown(), after: z.unknown(),
 }).strict();
 export const transactionRefSchema = z.object({ id: z.uuid(), departmentId: z.uuid(), version: z.number().int().positive(), hash: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
 export const openingBalanceSchema = z.object({ id: z.uuid(), departmentId: z.uuid(), date: dateSchema, amount: z.number().int().min(Number.MIN_SAFE_INTEGER).max(Number.MAX_SAFE_INTEGER), createdBy: z.uuid(), createdAt: z.iso.datetime(), updatedBy: z.uuid(), updatedAt: z.iso.datetime() }).strict();
-export const closingSchema = z.object({ id: z.uuid(), departmentId: z.uuid(), period: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/), status: z.enum(['OPEN', 'CLOSED']) }).strict();
+const closingSummary=z.object({income:z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),expense:z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),balance:z.number().int().min(Number.MIN_SAFE_INTEGER).max(Number.MAX_SAFE_INTEGER),carryForward:z.number().int().min(Number.MIN_SAFE_INTEGER).max(Number.MAX_SAFE_INTEGER),count:z.number().int().min(0)}).strict();
+export const closingSchema = z.object({ id: z.uuid(), departmentId: z.uuid(), period: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/), status: z.enum(['OPEN', 'CLOSED']),updatedBy:z.uuid().optional(),updatedAt:z.iso.datetime().optional(),reason:text(500).optional(),summary:closingSummary.optional() }).strict();
+export const annualClosingSchema=closingSchema.extend({period:z.string().regex(/^(?!0000)\d{4}$/)});
 export const controlSchema = z.object({
   schemaVersion: z.literal(1), revision: z.number().int().positive(),
   users: z.array(userSchema), departments: z.array(departmentSchema),
   assignments: z.array(assignmentSchema), accounts: z.array(accountSchema).default([]), audit: z.array(auditSchema),
   transactionRefs: z.array(transactionRefSchema).default([]), openingBalances: z.array(openingBalanceSchema).default([]), closings: z.array(closingSchema).default([]),
+  annualClosings:z.array(annualClosingSchema).optional(),
 }).strict().superRefine((s, ctx) => {
   const issue = (message: string) => ctx.addIssue({ code: 'custom', message });
   const unique = (values: string[]) => new Set(values).size === values.length;
@@ -50,6 +53,10 @@ export const controlSchema = z.object({
   for (const values of [s.transactionRefs.map(x => x.id), s.openingBalances.map(x => x.id), s.openingBalances.map(x => x.departmentId), s.closings.map(x => x.id), s.closings.map(x => `${x.departmentId}:${x.period}`)]) if (!unique(values)) issue('중복 거래/기초잔액/마감');
   for (const record of [...s.transactionRefs, ...s.openingBalances, ...s.closings]) if (!s.departments.some(d => d.id === record.departmentId)) issue('장부 부서 참조 오류');
   for (const record of s.openingBalances) if (!s.users.some(u => u.id === record.createdBy) || !s.users.some(u => u.id === record.updatedBy)) issue('기초잔액 작성자 참조 오류');
+  if(!unique([...s.closings,...(s.annualClosings??[])].map(c=>c.id)))issue('중복 마감 ID');
+  if(!unique((s.annualClosings??[]).map(c=>`${c.departmentId}:${c.period}`)))issue('중복 연간 마감');
+  for(const c of [...s.closings,...(s.annualClosings??[])])if(!s.departments.some(d=>d.id===c.departmentId)||(c.updatedBy&&!s.users.some(u=>u.id===c.updatedBy)))issue('마감 참조 오류');
+  for(const c of s.annualClosings??[])if(c.status==='CLOSED'&&Array.from({length:12},(_,i)=>`${c.period}-${String(i+1).padStart(2,'0')}`).some(period=>!s.closings.some(m=>m.departmentId===c.departmentId&&m.period===period&&m.status==='CLOSED')))issue('연간 마감은 12개월 마감 필요');
   for (const a of s.audit) if (!s.users.some(u => u.id === a.actorUserId) || (a.departmentId !== null && !s.departments.some(d => d.id === a.departmentId))) issue('감사 참조 오류');
   if (!s.users.some(u => u.role === 'ADMIN' && u.status === 'ACTIVE')) issue('활성 관리자 필요');
 });

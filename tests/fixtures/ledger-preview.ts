@@ -45,7 +45,7 @@ for(const [departmentId,amount]of [[ids.edu,1000000],[ids.mission,500000],[ids.m
 const http = createServer(async (req, res) => {
   try {
     const chunks: Buffer[] = []; let size = 0;
-    for await (const chunk of req) { size += chunk.length; if (size > 16384) { res.writeHead(413); res.end(); return; } chunks.push(chunk); }
+    for await (const chunk of req) { size += chunk.length; if (size > ((req.url??'').startsWith('/api/admin/backups/')?4*1024*1024:16384)) { res.writeHead(413); res.end(); return; } chunks.push(chunk); }
     const headers = new Headers(); for (const [key, value] of Object.entries(req.headers)) if (value) headers.set(key, Array.isArray(value) ? value.join(',') : value);
     const response = await api(new Request(origin + req.url, { method: req.method, headers, ...(!['GET','HEAD'].includes(req.method ?? 'GET') ? { body: Buffer.concat(chunks) } : {}) }));
     res.writeHead(response.status, Object.fromEntries(response.headers.entries())); res.end(Buffer.from(await response.arrayBuffer()));

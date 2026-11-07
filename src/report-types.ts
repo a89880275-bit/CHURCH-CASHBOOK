@@ -1,7 +1,7 @@
 export type ReportSummary = { from:string;to:string;income:number;expense:number;difference:number;count:number;carryForward:number|null;balance:number|null;missingCarry:string[];missingBalance:string[] };
 export type MonthRow = ReportSummary & {month:number;closedDepartments:number;departmentCount:number;closingStatus:'OPEN'|'CLOSED'|'PARTIAL'|'EMPTY'};
 export type DepartmentRow = ReportSummary & {departmentId:string;departmentName:string;departmentCode:string;status:string};
-export type AnnualReport = {year:number;from:string;to:string;summary:ReportSummary;monthly:MonthRow[];departments:DepartmentRow[];closedMonths:number;departmentCount:number};
+export type AnnualReport = {annualStatus:'OPEN'|'CLOSED'|'PARTIAL'|'EMPTY';year:number;from:string;to:string;summary:ReportSummary;monthly:MonthRow[];departments:DepartmentRow[];closedMonths:number;departmentCount:number};
 export type AccountReport = {year:number;type:'INCOME'|'EXPENSE';summary:ReportSummary;rows:{id:string;departmentId:string;departmentName:string;code:string;name:string;status:string;months:number[];total:number}[];monthlyTotals:number[];grandTotal:number};
 export type DepartmentReport = {year:number;month:number|null;from:string;to:string;rows:DepartmentRow[];summary:ReportSummary};
 export type DashboardReport = {year:number;from:string;to:string;summary:ReportSummary;monthly:MonthRow[];departmentCount:number;recentTransactions:{id:string;departmentId:string;departmentName:string;date:string;type:'INCOME'|'EXPENSE';description:string;amount:number;accountId:string;accountName:string;accountCode:string;createdByName:string}[];topExpenses:{accountId:string;departmentId:string;departmentName:string;code:string;name:string;amount:number}[]};

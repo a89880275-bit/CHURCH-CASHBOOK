@@ -1,5 +1,9 @@
 # 주내교회 부서 회계관리
 
+2026-11-07: 승인된 **PostgreSQL + JSON 트랜잭션 저장소** 어댑터, 최초 관리자 설정 도구 및 실제 격리 PostgreSQL 통합 테스트를 추가했습니다. [Netlify/DB 설정 절차](docs/postgres-deployment.md). 실제 관리형 DB·OIDC·Netlify 연결 검수는 미완료이며 운영 쓰기는 기본 차단입니다. 아래 이전 보고서는 당시 상태의 기록입니다.
+
+최신: **월/연간 마감·해제, 회계 JSON 백업·미리보기·복원, 모든 테마와 통계 Excel, 감사 검색, 뒤로/앞으로 입력 보호**를 로컬 검증했습니다. [운영 기능 보고서](docs/stage4-operations.md) · [기존 OIDC 방식과 설정 절차](docs/production-auth.md). 원격 쓰기·실제 OIDC/Netlify 검수는 미완료입니다.
+
 최신: **Diary 장부 양면 구성** — 거래 선택 후 오른쪽에서 입력·수정, 미저장 입력 확인, 행별 누적잔액, 실제 Excel 다운로드. [구현·검증 보고서](docs/diary-ledger.md)
 
 테마 추가: 상단 사용자 메뉴에서 **Pastel Diary Book** 수첩형 대시보드를 선택할 수 있습니다. 기존 Modern Dark 유지, Classic ERP Light 추가. 로컬 JSON에 계정별 테마를 저장합니다. [테마 구현·검증 보고](docs/pastel-diary-theme.md)
@@ -10,7 +14,7 @@
 
 단일 요구사항 기준: [accounting_web_codex_spec.md](docs/accounting_web_codex_spec.md). 원문을 유지합니다.
 
-현재는 **기초정보와 수입·지출 장부가 로컬 비공개 JSON에 실제 저장**됩니다. 사용자·부서·담당자·계정코드 관리에 이어 거래 등록·수정·논리삭제·검색·합계·기초잔액·이력과 통계·대시보드를 구현했습니다. Diary 장부에서 Excel 내보내기를 지원합니다. 마감 실행·다른 보고서 Excel·웹 백업/복원은 다음 단계이며 Netlify 운영 연동은 아직 미검증입니다.
+현재는 **기초정보와 수입·지출 장부가 로컬 비공개 JSON에 실제 저장**됩니다. 사용자·부서·담당자·계정 관리, 장부·통계와 함께 마감/해제, 모든 테마·통계 Excel, 회계 JSON 백업/복원, 감사 검색을 구현했습니다. 회계 복원은 현재 사용자 권한·부서 배정을 유지하며 파일 한도는 3MB입니다. Netlify 운영 인증·원격 쓰기/복원은 아직 미검증이며 차단합니다.
 
 최신 실행·테스트·변경 파일은 **[2단계 장부 보고서](docs/stage2-ledger.md)**, 기초정보 구현은 [1단계 보고서](docs/stage1-review.md)를 확인하세요. 이전 보고서는 당시 상태의 기록입니다.
 

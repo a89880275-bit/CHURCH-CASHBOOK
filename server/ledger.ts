@@ -37,7 +37,10 @@ export async function readDepartment(repo: Repository, state: Control, departmen
   if (refs.length > 20000) throw new ApiError(503, 'LEDGER_CAPACITY', '부서 거래가 현재 검증한 처리 한도를 초과했습니다. 저장소 확장이 필요합니다.');
   const rows: Transaction[] = [];
   // Bound concurrent filesystem reads; never treat directory listing/orphan objects as committed records.
-  for (let i = 0; i < refs.length; i += 32) rows.push(...await Promise.all(refs.slice(i, i + 32).map(r => repo.readTransaction!(r))));
+  for (let i = 0; i < refs.length; i += 32) {
+    const batch = refs.slice(i, i + 32);
+    rows.push(...await (repo.readTransactions ? repo.readTransactions(batch) : Promise.all(batch.map(r => repo.readTransaction!(r)))));
+  }
   for (const row of rows) {
     if (!state.accounts.some(a => a.id === row.accountId && a.departmentId === row.departmentId && a.type === row.type) || !state.users.some(u => u.id === row.createdBy) || !state.users.some(u => u.id === row.updatedBy)) throw new ApiError(503, 'TRANSACTION_REFERENCE_INVALID', '거래의 계정 또는 작성자 참조를 확인할 수 없습니다.');
   }
@@ -175,18 +178,26 @@ export async function handleLedger(args: { path: string; method: string; url: UR
     unlocked(state, input.departmentId, before.date, transaction.date);
     if (method !== 'DELETE') checkTransaction(state, transaction);
   }
-  // Object first, manifest second: failed/uncommitted objects are NEVER returned in the ledger.
-  const ref = await repo.putTransaction(transaction);
+  // Write immutable objects inside the repository's business transaction/lock.
+  // PostgreSQL must use the same connection for objects, manifest and audit.
+  let replay = false;
   await repo.commitLedger(async current => {
     const actor = writer(current, user.subject, transaction.departmentId);
+    const previous = current.transactionRefs.find(r => r.id === transaction.id);
+    if (method === 'POST' && previous) {
+      if (previous.departmentId !== transaction.departmentId) throw new ApiError(409, 'REQUEST_ID_CONFLICT', '이 요청 ID는 이미 사용되었습니다.');
+      const saved = await repo.readTransaction!(previous);
+      if (saved.createdBy !== actor.id || saved.status !== 'ACTIVE' || !(['departmentId','date','accountId','type','description','amount','remark'] as const).every(key => saved[key] === transaction[key])) throw new ApiError(409, 'REQUEST_ID_CONFLICT', '이미 저장된 요청입니다. 목록을 재조회해 주세요.');
+      transaction = saved; replay = true; return current;
+    }
     unlocked(current, transaction.departmentId, ...(before ? [before.date, transaction.date] : [transaction.date]));
     if (method !== 'DELETE') checkTransaction(current, transaction);
-    const previous = current.transactionRefs.find(r => r.id === transaction.id);
     if (method === 'POST' ? !!previous : !previous || previous.departmentId !== transaction.departmentId || previous.version !== expectedVersion) throw new ApiError(409, 'TRANSACTION_VERSION_CONFLICT', '거래가 먼저 변경되었습니다. 재조회 후 다시 시도해 주세요.');
+    const ref = await repo.putTransaction!(transaction);
     current.transactionRefs = [...current.transactionRefs.filter(r => r.id !== transaction.id), ref];
     verifyArithmetic(current, transaction.departmentId, await readDepartment(repo, current, transaction.departmentId));
     audit(current, actor, transaction, before, method === 'POST' ? 'TRANSACTION_CREATED' : method === 'PATCH' ? 'TRANSACTION_UPDATED' : 'TRANSACTION_DELETED', reason);
     return current;
   });
-  return json({ transaction }, method === 'POST' ? 201 : 200);
+  return json({ transaction, ...(replay ? { replay: true } : {}) }, method === 'POST' && !replay ? 201 : 200);
 }

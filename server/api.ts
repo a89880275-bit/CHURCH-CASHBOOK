@@ -8,8 +8,12 @@ import { allowedDepartments, koreaDate, requireAdmin, requireDepartment } from '
 import { handleMasterData } from './master-data';
 import { handleLedger } from './ledger';
 import { handleReports } from './reports';
+import { handleClosings } from './closings';
+import { handleBackups } from './backups';
+import { handleReportExport } from './report-export';
+import { auditSchema, dateSchema } from './schema';
 const json=(data:unknown,status=200)=>Response.json({success:true,data},{status});
-async function body(req:Request){if(!req.headers.get('content-type')?.startsWith('application/json'))throw new ApiError(415,'JSON_REQUIRED','JSON 요청이 필요합니다.');const text=await req.text();if(Buffer.byteLength(text)>16384)throw new ApiError(413,'BODY_TOO_LARGE','요청 크기가 너무 큽니다.');try{return JSON.parse(text);}catch{throw new ApiError(400,'INVALID_JSON','JSON 형식이 올바르지 않습니다.');}}
+async function body(req:Request){if(!req.headers.get('content-type')?.startsWith('application/json'))throw new ApiError(415,'JSON_REQUIRED','JSON 요청이 필요합니다.');const text=await req.text();if(Buffer.byteLength(text)>(new URL(req.url).pathname.includes('/admin/backups/')?4*1024*1024:16384))throw new ApiError(413,'BODY_TOO_LARGE','요청 크기가 너무 큽니다.');try{return JSON.parse(text);}catch{throw new ApiError(400,'INVALID_JSON','JSON 형식이 올바르지 않습니다.');}}
 export function createApi(repo:Repository,options:{origin:string;local?:boolean;auth?:AuthConfig}){
   return async(req:Request):Promise<Response>=>{
     let response:Response;
@@ -36,10 +40,12 @@ export function createApi(repo:Repository,options:{origin:string;local?:boolean;
       }else{
         const {state,user}=await authenticate(req,repo,options.local);
         if(path.startsWith('/api/admin/'))requireAdmin(user);
-        const master = await handleMasterData({path,method,url,state,user,repo,local:!!options.local,body:()=>body(req)});
-        const report = master ? null : await handleReports({path,method,url,state,user,repo});
-        const ledger = master || report ? null : await handleLedger({path,method,url,state,user,repo,body:()=>body(req)});
-        if(master)response=master;
+        const operation=await handleClosings({path,method,url,state,user,repo,body:()=>body(req)})??await handleBackups({path,method,url,state,user,repo,body:()=>body(req)})??await handleReportExport({path,method,url,state,user,repo});
+        const master = operation ? null : await handleMasterData({path,method,url,state,user,repo,local:!!options.local,body:()=>body(req)});
+        const report = operation || master ? null : await handleReports({path,method,url,state,user,repo});
+        const ledger = operation || master || report ? null : await handleLedger({path,method,url,state,user,repo,body:()=>body(req)});
+        if(operation)response=operation;
+        else if(master)response=master;
         else if(report)response=report;
         else if(ledger)response=ledger;
         else if(path==='/api/me' && method==='GET')response=json({user:{id:user.id,displayName:user.displayName,loginId:user.loginId,role:user.role,theme:user.theme??'modern-dark'},departments:allowedDepartments(state,user),revision:state.revision,local:!!options.local,writable:repo.writable});
@@ -73,7 +79,12 @@ export function createApi(repo:Repository,options:{origin:string;local?:boolean;
             const added=input.userIds.map(userId=>({id:randomUUID(),userId,departmentId:input.departmentId,validFrom:input.effectiveDate,validTo:null,assignedBy:user.id,reason:input.reason}));
             current.assignments=[...history,...added];current.audit.push({id:randomUUID(),actorUserId:user.id,departmentId:input.departmentId,entityType:'ASSIGNMENT',entityId:input.departmentId,action:'ASSIGNMENT_REPLACED',occurredAt:new Date().toISOString(),reason:input.reason,before,after:current.assignments.filter(a=>a.departmentId===input.departmentId)});return current;
           });response=json({revision:next.revision});
-        }else if(path==='/api/admin/audit-logs' && method==='GET')response=json(state.audit);
+        }else if(path==='/api/admin/audit-logs' && method==='GET'){
+          const q=z.object({departmentId:z.uuid().optional(),actorUserId:z.uuid().optional(),action:auditSchema.shape.action.optional(),from:dateSchema.optional(),to:dateSchema.optional(),keyword:z.string().max(100).optional(),page:z.coerce.number().int().min(1).optional()}).strict().parse(Object.fromEntries(url.searchParams));
+          if(q.from&&q.to&&q.from>q.to)throw new ApiError(422,'INVALID_RANGE','기간을 확인하세요.');
+          const rows=state.audit.filter(log=>(!q.departmentId||log.departmentId===q.departmentId)&&(!q.actorUserId||log.actorUserId===q.actorUserId)&&(!q.action||log.action===q.action)&&(!q.from||koreaDate(new Date(log.occurredAt))>=q.from)&&(!q.to||koreaDate(new Date(log.occurredAt))<=q.to)&&(!q.keyword||[log.reason,log.action,state.users.find(u=>u.id===log.actorUserId)?.displayName].join(' ').toLowerCase().includes(q.keyword.toLowerCase())));
+          response=json(q.page?{items:rows.slice().sort((a,b)=>b.occurredAt.localeCompare(a.occurredAt)||b.id.localeCompare(a.id)).slice((q.page-1)*50,q.page*50).map(log=>({...log,actorName:state.users.find(u=>u.id===log.actorUserId)?.displayName,departmentName:state.departments.find(d=>d.id===log.departmentId)?.name})),total:rows.length,page:q.page}:rows);
+        }
         else throw new ApiError(404,'NOT_FOUND','아직 제공하지 않는 API입니다.');
       }
     }catch(error){

@@ -87,5 +87,7 @@ export async function handleReports({ path, method, url, state, user, repo }: { 
   const range = periodRange('YEARLY',input.year);
   const rows = monthly(state,scope,input.year);
   if (path === '/api/reports/monthly') return json({ year:input.year, rows, summary:summary(state,scope,range.from,range.to) });
-  return json({ year:input.year, ...range, summary:summary(state,scope,range.from,range.to), monthly:rows, departments:departmentRows(state,scope,range.from,range.to), closedMonths:rows.filter(r => r.closingStatus === 'CLOSED').length, departmentCount:scope.length });
+  const annualClosed=scope.filter(s=>(state.annualClosings??[]).some(c=>c.departmentId===s.department.id&&c.period===String(input.year).padStart(4,'0')&&c.status==='CLOSED')).length;
+  const annualStatus=!scope.length?'EMPTY':annualClosed===scope.length?'CLOSED':annualClosed?'PARTIAL':'OPEN';
+  return json({ year:input.year, annualStatus, ...range, summary:summary(state,scope,range.from,range.to), monthly:rows, departments:departmentRows(state,scope,range.from,range.to), closedMonths:rows.filter(r => r.closingStatus === 'CLOSED').length, departmentCount:scope.length });
 }

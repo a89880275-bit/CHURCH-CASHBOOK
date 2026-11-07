@@ -8,7 +8,7 @@ import { House, BookOpen, Shapes, ChartColumn, ChartPie, BadgeCheck, Settings, C
 export function DiaryBinder(){return <div className="diary-binder" aria-hidden="true">{Array.from({length:6},(_,i)=><i key={i}><img src={steelRing} alt="" draggable={false}/></i>)}</div>;}
 export function DiaryIndexTabs(){
   const {me}=useContext(Session),location=useLocation();
-  const tabs=[{to:'/',label:'HOME',text:'대시보드'}, {to:'/ledger',label:'LEDGER',text:'수입·지출 장부'}, {to:'/accounts',label:'ACCOUNT',text:'계정코드'}, {to:'/reports?tab=monthly',label:'MONTH',text:'월별 통계'}, {to:'/reports?tab=accounts',label:'REPORT',text:'계정별 집계'}, ...(me.user.role==='ADMIN'?[{to:'/closings',label:'CLOSE',text:'마감 · 미구현'},{to:'/departments',label:'ADMIN',text:'부서·담당자 관리'},{to:'/backups',label:'BACKUP',text:'백업 · 미구현'}]:[])];
+  const tabs=[{to:'/',label:'HOME',text:'대시보드'}, {to:'/ledger',label:'LEDGER',text:'수입·지출 장부'}, {to:'/accounts',label:'ACCOUNT',text:'계정코드'}, {to:'/reports?tab=monthly',label:'MONTH',text:'월별 통계'}, {to:'/reports?tab=accounts',label:'REPORT',text:'계정별 집계'}, ...(me.user.role==='ADMIN'?[{to:'/closings',label:'CLOSE',text:'마감 관리'},{to:'/departments',label:'ADMIN',text:'부서·담당자 관리'},{to:'/backups',label:'BACKUP',text:'백업·복원'}]:[])];
   const icons=[House,BookOpen,Shapes,ChartColumn,ChartPie,BadgeCheck,Settings,CloudDownload];
   const names=['HOME','장부','계정','월별통계','계정별집계','마감','관리','백업'];
   const selectedTab=new URLSearchParams(location.search).get('tab')??'monthly';

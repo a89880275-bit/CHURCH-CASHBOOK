@@ -34,5 +34,5 @@ export async function callback(req:Request,repo:Repository,c:AuthConfig){
     const tokens=await oidc.authorizationCodeGrant(config,callbackUrl,{pkceCodeVerifier:flow.verifier,expectedState:flow.state,expectedNonce:flow.nonce,idTokenExpected:true});
     const sub=tokens.claims()?.sub;if(!sub)throw new Error('missing subject');
     const headers=new Headers({location:'/', 'cache-control':'no-store'});headers.append('set-cookie',await issueSession(repo,sub));headers.append('set-cookie',flowCookie('',0));return new Response(null,{status:302,headers});
-  } catch {return new Response(null,{status:302,headers:{location:'/login?error=authentication_failed','set-cookie':flowCookie('',0),'cache-control':'no-store'}});}
+  } catch {return new Response(null,{status:302,headers:{location:'/?error=authentication_failed','set-cookie':flowCookie('',0),'cache-control':'no-store'}});}
 }
