@@ -133,13 +133,17 @@ export async function handleLedger(args: { path: string; method: string; url: UR
     const items = filtered.slice((input.page - 1) * input.pageSize, input.page * input.pageSize).map(t => ({ ...t, runningBalance:balances.get(t.id)??null, account: state.accounts.find(a => a.id === t.accountId), createdByName: state.users.find(u => u.id === t.createdBy)?.displayName ?? '', updatedByName: state.users.find(u => u.id === t.updatedBy)?.displayName ?? '' }));
     return json({ items, total: filtered.length, page: input.page, pageSize: input.pageSize, totals: totals(filtered), carryForward, balance, openingBalance: opening, revision: state.revision, accounts: state.accounts.filter(a => a.departmentId === input.departmentId).sort((a,b) => a.sortOrder - b.sortOrder || a.code.localeCompare(b.code)), closedPeriods: state.closings.filter(c => c.departmentId === input.departmentId && c.status === 'CLOSED').map(c => c.period) });
   }
-  if (path === '/api/admin/opening-balances' && method === 'POST') {
-    requireAdmin(user); const input = openingBalanceInput.parse(await args.body());
+  if (['/api/admin/opening-balances','/api/opening-balances'].includes(path) && method === 'POST') {
+    if(path.startsWith('/api/admin/')) requireAdmin(user);
+    const input = openingBalanceInput.parse(await args.body());
+    writer(state,user.subject,input.departmentId);
     if (!repo.writable || !repo.commitLedger) throw new ApiError(503, 'WRITE_NOT_VERIFIED', '이 저장소의 장부 변경은 아직 검증되지 않았습니다.');
     const next = await repo.commitLedger(async current => {
-      const admin = writer(current, user.subject, input.departmentId); requireAdmin(admin);
-      if (current.revision !== input.expectedRevision) throw new ApiError(409, 'VERSION_CONFLICT', '자료가 변경되었습니다. 재조회 후 다시 설정해 주세요.');
+      const admin = writer(current, user.subject, input.departmentId);
+      if(path.startsWith('/api/admin/')) requireAdmin(admin);
       const before = current.openingBalances.find(b => b.departmentId === input.departmentId) ?? null;
+      if(before && admin.role!=='ADMIN') throw new ApiError(403,'OPENING_BALANCE_ADMIN_ONLY','기초잔액이 이미 등록되어 있습니다. 최초 등록 후 수정은 관리자만 가능합니다.');
+      if (current.revision !== input.expectedRevision) throw new ApiError(409, 'VERSION_CONFLICT', '자료가 변경되었습니다. 재조회 후 다시 설정해 주세요.');
       if (current.closings.some(c => c.departmentId === input.departmentId && c.status === 'CLOSED' && (input.date.slice(0,7) <= c.period || (before && before.date.slice(0,7) <= c.period)))) throw new ApiError(409, 'PERIOD_CLOSED', '마감된 기간에 영향을 주는 기초잔액은 변경할 수 없습니다.');
       const now = new Date().toISOString();
       const after = { id: before?.id ?? randomUUID(), departmentId: input.departmentId, date: input.date, amount: input.amount, createdBy: before?.createdBy ?? admin.id, createdAt: before?.createdAt ?? now, updatedBy: admin.id, updatedAt: now };

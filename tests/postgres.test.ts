@@ -40,6 +40,17 @@ beforeEach(async () => {
   admin = (await issueSession(repo, 'oidc-test:admin')).split(';')[0]; staff = (await issueSession(repo, 'oidc-test:accountant')).split(';')[0];
 });
 describe('real PostgreSQL storage and production-mode APIs', () => {
+  it('serializes staff initial opening balances across two connections and reserves amendments for admin',async()=>{
+    await repo.commitLedger(s=>{s.openingBalances=[];return s;});
+    const body={departmentId:ids.edu,date:'2026-01-01',amount:0,reason:'최초 잔액 동시 검수',expectedRevision:(await repo.control()).revision};
+    const responses=await Promise.all([api(req('/opening-balances',staff,body)),peerApi(req('/opening-balances',staff,{...body,amount:100}))]);
+    expect(responses.map(r=>r.status).sort()).toEqual([200,403]);
+    const saved=await repo.control();expect(saved.openingBalances).toHaveLength(1);expect(saved.audit).toHaveLength(1);
+    expect((await peerApi(req('/opening-balances',staff,{...body,amount:200,expectedRevision:saved.revision}))).status).toBe(403);
+    expect(await repo.control()).toEqual(saved);
+    expect((await api(req('/opening-balances',admin,{...body,amount:300,expectedRevision:saved.revision}))).status).toBe(200);
+    expect((await peer.control()).openingBalances[0]).toMatchObject({amount:300,createdBy:ids.b,updatedBy:ids.admin});
+  });
   it('serializes catalog imports across independent SQL pools and preserves transaction references',async()=>{
     const sources=[];
     for(const name of ['표준 A','표준 B']){

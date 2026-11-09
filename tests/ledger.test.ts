@@ -172,7 +172,41 @@ describe('ledger API backed by immutable per-transaction JSON', () => {
   it('reports balance as unset instead of zero until administrator explicitly sets opening balance', async () => {
     await create(); expect((await listing()).balance).toBeNull(); expect((await listing()).openingBalance).toBeNull();
   });
-  it('only admin sets opening balance; includes prior activity once and ignores search filters in period-end balance', async () => {
+  it('allows assigned staff initial zero balance once; only admin can amend it, preserving identity and audit',async()=>{
+    const body={departmentId:ids.edu,date:'2026-01-01',amount:0,reason:'최초 잔액 확인',expectedRevision:1};
+    expect((await api(request('/opening-balances',b,body))).status).toBe(200);
+    const before=await repo.control();expect(before.openingBalances[0].createdBy).toBe(ids.b);expect(before.audit[0]).toMatchObject({actorUserId:ids.b,action:'OPENING_BALANCE_SET',before:null});
+    expect((await api(request('/opening-balances',b,{...body,amount:10,expectedRevision:2}))).status).toBe(403);
+    expect(await repo.control()).toEqual(before);
+    expect((await api(request('/opening-balances',admin,{...body,amount:20,expectedRevision:2}))).status).toBe(200);
+    const after=await repo.control();expect(after.openingBalances[0]).toMatchObject({id:before.openingBalances[0].id,createdBy:ids.b,updatedBy:ids.admin,amount:20});expect(after.audit).toHaveLength(2);
+  });
+  it('denies unassigned and disabled staff initial balances without changes',async()=>{
+    const body={departmentId:ids.mission,date:'2026-01-01',amount:1,reason:'권한 검증',expectedRevision:1};const before=await repo.control();
+    expect((await api(request('/opening-balances',b,body))).status).toBe(403);
+    expect((await api(request('/opening-balances',c,{...body,departmentId:ids.edu}))).status).toBe(403);
+    expect(await repo.control()).toEqual(before);
+    await repo.updateControl(1,s=>{s.users.find(u=>u.id===ids.b)!.status='DISABLED';return s;});
+    expect((await api(request('/opening-balances',b,{...body,departmentId:ids.edu,expectedRevision:2}))).status).toBe(401);
+    expect((await repo.control()).openingBalances).toHaveLength(0);
+  });
+  it('serializes simultaneous initial balances so only one staff request succeeds',async()=>{
+    const body={departmentId:ids.edu,date:'2026-01-01',amount:100,reason:'동시 최초 등록',expectedRevision:1};
+    const results=await Promise.all([api(request('/opening-balances',b,body)),api(request('/opening-balances',b,{...body,amount:200}))]);
+    expect(results.map(r=>r.status).sort()).toEqual([200,403]);const saved=await repo.control();expect(saved.openingBalances).toHaveLength(1);expect(saved.audit).toHaveLength(1);expect([100,200]).toContain(saved.openingBalances[0].amount);
+  });
+  it('rechecks staff assignment inside the opening balance commit',async()=>{
+    class RevokingRepository extends FileRepository {
+      override async commitLedger(change:Parameters<FileRepository['commitLedger']>[0]){
+        await super.commitLedger(s=>{s.assignments=s.assignments.filter(a=>a.departmentId!==ids.edu);return s;});
+        return super.commitLedger(change);
+      }
+    }
+    const racing=createApi(new RevokingRepository(root),{origin,local:true});
+    expect((await racing(request('/opening-balances',b,{departmentId:ids.edu,date:'2026-01-01',amount:100,reason:'배정 해제 경합',expectedRevision:2}))).status).toBe(403);
+    expect((await repo.control()).openingBalances).toHaveLength(0);
+  });
+  it('admin sets opening balance; includes prior activity once and ignores search filters in period-end balance', async () => {
     const opening = { departmentId: ids.edu, date: '2026-01-01', amount: 500000, reason: '검증된 이월 잔액 입력', expectedRevision: 1 };
     expect((await api(request('/admin/opening-balances', b, opening))).status).toBe(403);
     expect((await api(request('/admin/opening-balances', admin, opening))).status).toBe(200);
