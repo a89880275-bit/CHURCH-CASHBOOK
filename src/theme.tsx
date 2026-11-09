@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { api, type Me } from './client';
 import { themes, themeLabels, type Theme } from '../shared/theme';
+import { sessionVersion, assertSessionVersion } from './session-boundary';
 
 const ThemeContext = createContext<{theme:Theme;choose:(theme:Theme)=>Promise<void>;saving:boolean;message:string}>({theme:'modern-dark',choose:async()=>{},saving:false,message:''});
 export const useTheme = () => useContext(ThemeContext);
@@ -8,11 +9,13 @@ export function ThemeProvider({me,children}:{me:Me;children:ReactNode}) {
   const [theme,setTheme]=useState<Theme>(me.user.theme??'modern-dark'),[saving,setSaving]=useState(false),[message,setMessage]=useState('');
   useEffect(()=>{document.documentElement.dataset.theme=theme;return()=>{delete document.documentElement.dataset.theme;};},[theme]);
   async function choose(next:Theme){
+    const version=sessionVersion();
     if(saving)return;setTheme(next);setMessage('');
     if(!me.writable){setMessage('현재 화면에만 적용했습니다. 운영 저장소 검증 전에는 계정 설정을 저장할 수 없습니다.');return;}
     setSaving(true);
     try {
       const latest=await api<Me>('/me');
+      assertSessionVersion(version);
       await api('/me/preferences',{theme:next,expectedRevision:latest.revision},'PATCH');
       setMessage('계정에 저장됨 · 다른 기기 로그인 시 적용');
     } catch(e){setMessage(`화면에는 적용했지만 계정 저장에 실패했습니다. ${(e as Error).message}`);}

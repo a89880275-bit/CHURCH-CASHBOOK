@@ -23,6 +23,8 @@ function unlocked(state: Control, departmentId: string, ...dates: string[]) {
 function checkTransaction(state: Control, tx: Transaction) {
   const account = state.accounts.find(a => a.id === tx.accountId && a.departmentId === tx.departmentId);
   if (!account) throw new ApiError(422, 'ACCOUNT_DEPARTMENT_MISMATCH', '해당 부서에 속한 계정을 선택해 주세요.');
+  if(account.treatment==='OPENING_BALANCE')throw new ApiError(422,'OPENING_BALANCE_ONLY','전년이월은 일반 수입으로 등록할 수 없습니다. 관리자의 기초잔액 기능을 사용하세요.');
+  if(account.treatment==='REFUND_REVIEW')throw new ApiError(422,'REFUND_REVIEW_REQUIRED','환불금은 원거래 취소·지출 환입 여부를 먼저 확인해야 합니다. 중복 수입 등록을 차단합니다.');
   if (account.status !== 'ACTIVE') throw new ApiError(422, 'ACCOUNT_INACTIVE', '활성 계정을 선택해 주세요.');
   if (account.type !== tx.type) throw new ApiError(422, 'ACCOUNT_TYPE_MISMATCH', '계정과 거래의 수입·지출 유형이 일치하지 않습니다.');
   const opening = state.openingBalances.find(b => b.departmentId === tx.departmentId);

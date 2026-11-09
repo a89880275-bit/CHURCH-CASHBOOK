@@ -25,6 +25,27 @@ beforeEach(async () => {
 });
 afterEach(async () => { await rm(root, { recursive: true, force: true }); });
 describe('stage 1 APIs backed by real JSON files', () => {
+  it('denies assigned accountants direct creation and code changes without changing data', async () => {
+    const before = await repo.control();
+    expect((await api(request('/accounts', accountant, account()))).status).toBe(403);
+    expect(await repo.control()).toEqual(before);
+    const created = await (await api(request('/accounts', admin, account()))).json();
+    const saved = await repo.control();
+    expect((await api(request('/accounts', accountant, account({id:created.data.account.id,code:'I999',expectedRevision:saved.revision}), 'PATCH'))).status).toBe(403);
+    expect(await repo.control()).toEqual(saved);
+  });
+  it('rechecks administrator status inside the direct-creation transaction', async () => {
+    class DemotingRepository extends FileRepository {
+      override async updateControl(expected: number, change: Parameters<FileRepository['updateControl']>[1]) {
+        await super.updateControl(1, state => {state.users.find(u => u.id === ids.c)!.role = 'ADMIN'; state.users.find(u => u.id === ids.admin)!.role = 'ACCOUNTANT'; return state;});
+        return super.updateControl(expected, change);
+      }
+    }
+    const racing = createApi(new DemotingRepository(root), {origin,local:true});
+    expect((await racing(request('/accounts', admin, account({expectedRevision:2})))).status).toBe(403);
+    expect((await repo.control()).accounts).toHaveLength(0);
+    expect((await repo.control()).audit).toEqual([]);
+  });
   it('stores the department period, audits it, and preserves all ledger references when switching',async()=>{
     const original=await repo.control();
     const response=await api(request('/admin/departments',admin,department({id:ids.edu,code:'EDU',name:'교육부',managementPeriod:'YEARLY'}),'PATCH'));
@@ -41,15 +62,16 @@ describe('stage 1 APIs backed by real JSON files', () => {
     expect((await api(request('/admin/departments',admin,department({code:'OTHER',managementPeriod:'WEEKLY',expectedRevision:2})))).status).toBe(422);
   });
   it('rechecks current assignments inside the commit boundary for an in-flight request', async () => {
+    const created = await (await api(request('/accounts', admin, account()))).json();
     class RevokingRepository extends FileRepository {
       override async updateControl(expected: number, change: Parameters<FileRepository['updateControl']>[1]) {
-        await super.updateControl(1, s => { s.assignments = s.assignments.filter(a => a.departmentId !== ids.edu); return s; });
+        await super.updateControl(2, s => { s.assignments = s.assignments.filter(a => a.departmentId !== ids.edu); return s; });
         return super.updateControl(expected, change);
       }
     }
     const racing = createApi(new RevokingRepository(root), { origin, local: true });
-    expect((await racing(request('/accounts', accountant, account({ expectedRevision: 2 })))).status).toBe(403);
-    expect((await repo.control()).accounts).toHaveLength(0);
+    expect((await racing(request('/accounts', accountant, account({ id: created.data.account.id, expectedRevision: 3 }), 'PATCH'))).status).toBe(403);
+    expect((await repo.control()).accounts).toHaveLength(1);
   });
   it('registers a user and audit together and persists after reopening', async () => {
     const response = await api(request('/admin/users', admin, user())); expect(response.status).toBe(201);
@@ -70,7 +92,7 @@ describe('stage 1 APIs backed by real JSON files', () => {
   });
   it('rejects unknown fields such as password and createdBy', async () => {
     expect((await api(request('/admin/users', admin, user({ password: 'do-not-store' })))).status).toBe(422);
-    expect((await api(request('/accounts', accountant, account({ createdBy: ids.admin })))).status).toBe(422);
+    expect((await api(request('/accounts', admin, account({ createdBy: ids.admin })))).status).toBe(422);
   });
   it('cannot disable or demote the last active administrator', async () => {
     const base = { id: ids.admin, displayName: '관리자', role: 'ADMIN', status: 'DISABLED', reason: '권한 변경', expectedRevision: 1 };
@@ -91,7 +113,7 @@ describe('stage 1 APIs backed by real JSON files', () => {
   });
   it('rejects duplicate department codes', async () => { expect((await api(request('/admin/departments', admin, department({ code: 'edu' })))).status).toBe(409); });
   it('department suspension preserves records but blocks accountant access and admin writes', async () => {
-    expect((await api(request('/accounts', accountant, account()))).status).toBe(201);
+    expect((await api(request('/accounts', admin, account()))).status).toBe(201);
     expect((await api(request('/admin/departments', admin, department({ id: ids.edu, code: 'EDU', name: '교육부', status: 'INACTIVE', expectedRevision: 2 }), 'PATCH'))).status).toBe(200);
     expect((await api(request('/accounts?departmentId=' + ids.edu, accountant))).status).toBe(403);
     expect((await api(request('/accounts?departmentId=' + ids.edu, admin))).status).toBe(200);
@@ -99,9 +121,9 @@ describe('stage 1 APIs backed by real JSON files', () => {
     expect((await repo.control()).accounts).toHaveLength(1); expect((await repo.control()).assignments).toHaveLength(2);
   });
   it('allows same account code in independent departments but denies duplicates in one', async () => {
-    expect((await api(request('/accounts', accountant, account()))).status).toBe(201);
+    expect((await api(request('/accounts', admin, account()))).status).toBe(201);
     expect((await api(request('/accounts', admin, account({ departmentId: ids.mission, expectedRevision: 2 })))).status).toBe(201);
-    expect((await api(request('/accounts', accountant, account({ code: 'i001', expectedRevision: 3 })))).status).toBe(409);
+    expect((await api(request('/accounts', admin, account({ code: 'i001', expectedRevision: 3 })))).status).toBe(409);
     expect((await repo.control()).accounts).toHaveLength(2);
   });
   it('denies cross-department account read and write', async () => {
@@ -114,7 +136,7 @@ describe('stage 1 APIs backed by real JSON files', () => {
     expect((await repo.control()).accounts[0].departmentId).toBe(ids.mission);
   });
   it('account editing and deactivation preserve ID and history; type changes are blocked', async () => {
-    const created = await (await api(request('/accounts', accountant, account()))).json();
+    const created = await (await api(request('/accounts', admin, account()))).json();
     const id = created.data.account.id;
     expect((await api(request('/accounts', accountant, account({ id, status: 'INACTIVE', name: '회비(중지)', expectedRevision: 2 }), 'PATCH'))).status).toBe(200);
     expect((await api(request('/accounts', accountant, account({ id, type: 'EXPENSE', expectedRevision: 3 }), 'PATCH'))).status).toBe(409);
@@ -122,11 +144,11 @@ describe('stage 1 APIs backed by real JSON files', () => {
     expect(state.audit.map(a => a.action)).toEqual(['ACCOUNT_CREATED', 'ACCOUNT_UPDATED']);
   });
   it('simultaneous account writes conflict visibly; explicit reload/retry preserves both', async () => {
-    const responses = await Promise.all([api(request('/accounts', accountant, account())), api(request('/accounts', accountant, account({ code: 'I002' })))]);
+    const responses = await Promise.all([api(request('/accounts', admin, account())), api(request('/accounts', admin, account({ code: 'I002' })))]);
     expect(responses.map(r => r.status).sort()).toEqual([201, 409]);
     const latest = await repo.control();
     const missing = latest.accounts[0].code === 'I001' ? 'I002' : 'I001';
-    expect((await api(request('/accounts', accountant, account({ code: missing, expectedRevision: latest.revision })))).status).toBe(201);
+    expect((await api(request('/accounts', admin, account({ code: missing, expectedRevision: latest.revision })))).status).toBe(201);
     expect((await new FileRepository(root).control()).accounts).toHaveLength(2);
   });
   it('assignment clearing keeps other departments and records the previous scope', async () => {
@@ -139,7 +161,7 @@ describe('stage 1 APIs backed by real JSON files', () => {
   it('storage failure returns 503 and leaves data AND audit unchanged', async () => {
     const before = await readFile(join(root, 'current.json'), 'utf8');
     const broken = createApi(new FileRepository(root, { beforePublish: async () => { throw new Error('disk error'); } }), { origin, local: true });
-    const r = await broken(request('/accounts', accountant, account()));
+    const r = await broken(request('/accounts', admin, account()));
     expect(r.status).toBe(503); expect(await r.text()).not.toContain('disk error');
     expect(await readFile(join(root, 'current.json'), 'utf8')).toBe(before);
     expect((await repo.control()).audit).toEqual([]);

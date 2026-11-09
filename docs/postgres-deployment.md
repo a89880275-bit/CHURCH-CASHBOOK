@@ -1,5 +1,7 @@
 # PostgreSQL JSON 저장소와 Netlify 연결
 
+후속 결과: 지정된 Neon 테스트 프로젝트의 실제 연결·TLS·임시 JSON 읽기/쓰기/롤백 검증을 완료했습니다. [최신 연결 결과](neon-connection.md). 최초 앱 관리자/OIDC 연결 및 Netlify 검수는 별도입니다.
+
 2026-11-07 사용자가 관리형 PostgreSQL + JSON 전환을 승인했습니다. 기존 JSON 논리 스키마, 업무 API, 인증/부서 권한 및 백업 파일 형식을 유지합니다. 서비스 계정 생성, 유료 자원 생성, 실제 DB 접속이나 운영 자료 이전은 실행하지 않았습니다.
 
 ## 저장 및 동시성 구조
@@ -28,7 +30,7 @@ Netlify Functions / Production scope에만 설정합니다. `VITE_*`, Git, `publ
 
 PostgreSQL 선택 시 BLOBS_STORE는 사용하지 않습니다. STORAGE_DRIVER 생략 시 기존 읽기 전용 Blobs 어댑터를 유지합니다. DB 오류 시 로컬 파일이나 Blobs로 자동 대체하지 않습니다.
 
-운영 DB 연결은 TLS 및 인증서 검증을 강제합니다. URL의 `sslmode=require/verify-ca/verify-full`은 제거한 뒤 `rejectUnauthorized:true`를 적용합니다. `sslmode=disable`, `sslcert`, 임의 옵션은 거절합니다. 공급자의 URL에 다른 옵션이 필요한 경우 문서를 확인해 지원 범위를 먼저 검토해야 하며 인증서 검증을 끄지 않습니다. 공급자별 전용 API는 구현하지 않았습니다.
+운영 DB 연결은 TLS 및 인증서 검증을 강제합니다. URL의 `sslmode=require/verify-ca/verify-full`은 제거한 뒤 `rejectUnauthorized:true`를 적용합니다. Neon의 `channel_binding=require` 표기는 pg의 `enableChannelBinding:true`로 처리합니다. 이는 서버가 제공할 때 SCRAM-SHA-256-PLUS를 선택하며 엄격한 require 모드 보장은 아닙니다. `sslmode=disable`, `sslcert`, 그 밖의 임의 옵션은 거절합니다. 공급자의 URL에 다른 옵션이 필요한 경우 문서를 확인해 지원 범위를 먼저 검토해야 하며 인증서 검증을 끄지 않습니다. 공급자별 전용 API는 구현하지 않았습니다.
 
 ## 최초 설정 절차
 

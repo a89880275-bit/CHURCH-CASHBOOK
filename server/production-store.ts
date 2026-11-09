@@ -8,10 +8,15 @@ export function productionPoolConfig(env: NodeJS.ProcessEnv): PoolConfig {
     const url = new URL(env.DATABASE_URL ?? '');
     if (!['postgres:', 'postgresql:'].includes(url.protocol) || !url.hostname || !url.username || !url.password || url.pathname.length < 2) throw new Error();
     for (const key of [...url.searchParams.keys()]) {
+      if (key === 'channel_binding' && url.searchParams.get(key) === 'require') {
+        // pg exposes channel binding through enableChannelBinding, not this URL key.
+        // It selects SCRAM-SHA-256-PLUS when offered; it is not a strict require mode.
+        url.searchParams.delete(key); continue;
+      }
       if (key !== 'sslmode' || !['require', 'verify-ca', 'verify-full'].includes(url.searchParams.get(key)!)) throw new Error();
       url.searchParams.delete(key);
     }
-    return { connectionString: url.href, ssl: { rejectUnauthorized: true, ...(env.DATABASE_CA_CERT ? { ca: env.DATABASE_CA_CERT } : {}) }, max: 3, connectionTimeoutMillis: 5000, idleTimeoutMillis: 10000, statement_timeout: 8000, idle_in_transaction_session_timeout: 15000, application_name: 'church-cashbook' };
+    return { connectionString: url.href, ssl: { rejectUnauthorized: true, ...(env.DATABASE_CA_CERT ? { ca: env.DATABASE_CA_CERT } : {}) }, enableChannelBinding: true, max: 3, connectionTimeoutMillis: 5000, idleTimeoutMillis: 10000, statement_timeout: 8000, idle_in_transaction_session_timeout: 15000, application_name: 'church-cashbook' };
   } catch { throw new Error('DATABASE_CONFIG_INVALID'); }
 }
 

@@ -3,9 +3,13 @@ import { z, ZodError } from 'zod';
 import { themes } from '../shared/theme';
 import { assignmentInput, type Control } from './schema';
 import { ApiError, type Repository } from './store';
-import { authenticate, callback, cookieValue, digest, issueSession, login, sessionCookie, type AuthConfig } from './auth';
+import { authenticate, callback, issueSession, login, logout, logoutCallback, switchLogin, checkSessionContext, type AuthConfig } from './auth';
 import { allowedDepartments, koreaDate, requireAdmin, requireDepartment } from './policy';
 import { handleMasterData } from './master-data';
+import { handleAccountCatalog } from './account-catalog';
+import { handleAccountTemplate } from './account-template';
+import { handleInvitations } from './invitations';
+import type { InvitationProvider } from './auth0-management';
 import { handleLedger } from './ledger';
 import { handleReports } from './reports';
 import { handleClosings } from './closings';
@@ -13,8 +17,8 @@ import { handleBackups } from './backups';
 import { handleReportExport } from './report-export';
 import { auditSchema, dateSchema } from './schema';
 const json=(data:unknown,status=200)=>Response.json({success:true,data},{status});
-async function body(req:Request){if(!req.headers.get('content-type')?.startsWith('application/json'))throw new ApiError(415,'JSON_REQUIRED','JSON 요청이 필요합니다.');const text=await req.text();if(Buffer.byteLength(text)>(new URL(req.url).pathname.includes('/admin/backups/')?4*1024*1024:16384))throw new ApiError(413,'BODY_TOO_LARGE','요청 크기가 너무 큽니다.');try{return JSON.parse(text);}catch{throw new ApiError(400,'INVALID_JSON','JSON 형식이 올바르지 않습니다.');}}
-export function createApi(repo:Repository,options:{origin:string;local?:boolean;auth?:AuthConfig}){
+async function body(req:Request){if(!req.headers.get('content-type')?.startsWith('application/json'))throw new ApiError(415,'JSON_REQUIRED','JSON 요청이 필요합니다.');const text=await req.text();if(Buffer.byteLength(text)>(new URL(req.url).pathname.match(/\/admin\/(backups|standard-accounts)\//)?4*1024*1024:16384))throw new ApiError(413,'BODY_TOO_LARGE','요청 크기가 너무 큽니다.');try{return JSON.parse(text);}catch{throw new ApiError(400,'INVALID_JSON','JSON 형식이 올바르지 않습니다.');}}
+export function createApi(repo:Repository,options:{origin:string;local?:boolean;auth?:AuthConfig;sessionBoundary?:boolean;invitationProvider?:()=>InvitationProvider}){
   return async(req:Request):Promise<Response>=>{
     let response:Response;
     try {
@@ -23,7 +27,10 @@ export function createApi(repo:Repository,options:{origin:string;local?:boolean;
       if(method!=='GET' && req.headers.get('origin')!==options.origin)throw new ApiError(403,'ORIGIN_REJECTED','요청 출처를 확인할 수 없습니다.');
       if(path==='/api/auth/login' && (method==='POST'||method==='GET')){
         if(!options.auth)throw new ApiError(503,'AUTH_NOT_CONFIGURED','운영 인증 제공자가 아직 연결되지 않았습니다.');
-        response=await login(options.auth);
+        response=url.searchParams.get('mode')==='switch'?await switchLogin(req,options.auth):await login(options.auth);
+      }else if(path==='/api/auth/logout/callback' && method==='GET'){
+        if(!options.auth)throw new ApiError(503,'AUTH_NOT_CONFIGURED','인증 설정을 확인하세요.');
+        response=logoutCallback(req,options.auth);
       }else if(path==='/api/auth/callback' && method==='GET'){
         if(!options.auth)throw new ApiError(503,'AUTH_NOT_CONFIGURED','운영 인증 제공자가 아직 연결되지 않았습니다.');
         response=await callback(req,repo,options.auth);
@@ -35,12 +42,20 @@ export function createApi(repo:Repository,options:{origin:string;local?:boolean;
         if(!user)throw new ApiError(401,'INVALID_IDENTITY','로그인을 완료하지 못했습니다.');
         response=json({local:true});response.headers.set('set-cookie',await issueSession(repo,user.subject,true));
       }else if(path==='/api/auth/logout' && method==='POST'){
-        const token=cookieValue(req,options.local?'local-session':'__Host-session');if(token)await repo.deleteSession(digest(token));
-        response=json(null);response.headers.set('set-cookie',sessionCookie('',0,!options.local));
+        let contextRequired=!!options.sessionBoundary;
+        if(contextRequired&&!req.headers.get('x-session-context')){
+          try{await authenticate(req,repo,options.local);}catch(error){if(error instanceof ApiError&&error.status===401)contextRequired=false;else throw error;}
+        }
+        if(contextRequired||req.headers.has('x-session-context'))checkSessionContext(req,options.local,contextRequired);
+        const input=z.object({mode:z.enum(['logout','switch']).default('logout')}).strict().parse(req.body===null?{}:await body(req));
+        response=await logout(req,repo,options.auth,input.mode,options.local);
       }else{
-        const {state,user}=await authenticate(req,repo,options.local);
+        const {state,user,sessionContext}=await authenticate(req,repo,options.local);
+        if(method!=='GET')checkSessionContext(req,options.local,!!options.sessionBoundary);
         if(path.startsWith('/api/admin/'))requireAdmin(user);
-        const operation=await handleClosings({path,method,url,state,user,repo,body:()=>body(req)})??await handleBackups({path,method,url,state,user,repo,body:()=>body(req)})??await handleReportExport({path,method,url,state,user,repo});
+        const template=await handleAccountTemplate({path,method,state,user,repo,body:()=>body(req)});
+        const catalog=template??await handleAccountCatalog({path,method,url,state,user,repo,body:()=>body(req)});
+        const operation=catalog??await handleInvitations({path,method,user,repo,body:()=>body(req),provider:options.invitationProvider})??await handleClosings({path,method,url,state,user,repo,body:()=>body(req)})??await handleBackups({path,method,url,state,user,repo,body:()=>body(req)})??await handleReportExport({path,method,url,state,user,repo});
         const master = operation ? null : await handleMasterData({path,method,url,state,user,repo,local:!!options.local,body:()=>body(req)});
         const report = operation || master ? null : await handleReports({path,method,url,state,user,repo});
         const ledger = operation || master || report ? null : await handleLedger({path,method,url,state,user,repo,body:()=>body(req)});
@@ -48,7 +63,7 @@ export function createApi(repo:Repository,options:{origin:string;local?:boolean;
         else if(master)response=master;
         else if(report)response=report;
         else if(ledger)response=ledger;
-        else if(path==='/api/me' && method==='GET')response=json({user:{id:user.id,displayName:user.displayName,loginId:user.loginId,role:user.role,theme:user.theme??'modern-dark'},departments:allowedDepartments(state,user),revision:state.revision,local:!!options.local,writable:repo.writable});
+        else if(path==='/api/me' && method==='GET')response=json({sessionContext,user:{id:user.id,displayName:user.displayName,loginId:user.loginId,role:user.role,theme:user.theme??'modern-dark'},departments:allowedDepartments(state,user),revision:state.revision,local:!!options.local,writable:repo.writable});
         else if(path==='/api/me/preferences' && method==='PATCH'){
           const input=z.object({theme:z.enum(themes),expectedRevision:z.number().int().positive()}).strict().parse(await body(req));
           const next=await repo.updateControl(input.expectedRevision,current=>{

@@ -1,0 +1,44 @@
+.catalog-intro{margin-bottom:20px}.catalog-picker{max-height:76vh;overflow:auto;min-width:0}.catalog-picker .field{min-width:150px;flex:1}.catalog-list{max-height:44vh;overflow:auto}.catalog-list table{min-width:650px}.catalog-list th{position:sticky;top:0;z-index:1;background:var(--surface,#182338)}.modal:has(.catalog-picker),[role=dialog]:has(.catalog-picker){width:min(1000px,96vw);max-width:1000px}.catalog-picker .actions{position:sticky;bottom:0;padding:12px 0;background:var(--surface,#182338)}:root[data-theme=classic-light] .catalog-list th,:root[data-theme=classic-light] .catalog-picker .actions{background:#f3f6fa}:root[data-theme=pastel-diary] .catalog-list th,:root[data-theme=pastel-diary] .catalog-picker .actions{background:#fffcf7}@media(max-width:640px){.modal:has(.catalog-picker),[role=dialog]:has(.catalog-picker){width:98vw;max-height:96dvh;padding:16px}.catalog-picker{max-height:87dvh}.catalog-picker .toolbar{flex-wrap:wrap}.catalog-picker .actions{flex-wrap:wrap}.catalog-list{max-height:48dvh}.catalog-picker .actions button{flex:1}}
+
+@media(max-width:640px){.catalog-list table{min-width:0;width:100%;display:block}.catalog-list thead{display:none}.catalog-list tbody{display:block}.catalog-list tr{display:grid;grid-template-columns:36px 1fr;gap:3px;padding:12px 6px;border-bottom:1px solid var(--border,#7d879633)}.catalog-list td{display:block;grid-column:2;padding:4px 8px;border:0;white-space:normal}.catalog-list td:first-child{grid-column:1;grid-row:1/5}.catalog-list td input{width:20px;height:20px}.catalog-list td button{white-space:normal}}
+
+html:has(dialog[open] .catalog-picker),body:has(dialog[open] .catalog-picker){overflow:hidden}.catalog-picker .toolbar{margin:12px 0}.catalog-picker .field{margin:6px 0}@media(max-width:640px){dialog.modal:has(.catalog-picker){width:calc(100vw - 12px);max-height:calc(100dvh - 12px);padding:14px;overflow:hidden}.catalog-picker{max-height:calc(100dvh - 105px);overflow-y:auto;overflow-x:hidden}.catalog-list{max-height:none;overflow:visible}.catalog-picker .toolbar{gap:7px;margin:10px 0}.catalog-picker .field{min-width:120px}}
+
+/* Keep the selection dialog dense without changing other business tables. */
+dialog.modal:has(.catalog-picker){display:flex;flex-direction:column;padding:20px;height:min(900px,94dvh);max-height:94dvh;overflow:hidden}
+.catalog-picker{display:flex;flex-direction:column;flex:1;min-height:0;max-height:none;overflow:hidden}
+.catalog-filters{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;margin:6px 0}
+.catalog-filters>.toolbar{display:contents}
+.catalog-picker .catalog-filters .field{flex:0 1 120px;min-width:95px;margin:0;gap:3px;font-size:12px}
+.catalog-picker .catalog-filters .field:has(input){flex-basis:160px}
+.catalog-filters .tabs{margin-right:0}
+.catalog-filters,.catalog-picker>.toolbar,.catalog-picker>.actions{flex-shrink:0}
+.catalog-picker .catalog-filters input,.catalog-picker .catalog-filters select{width:100%;min-height:32px;height:32px;padding:4px 8px;font-size:13px}
+.catalog-picker .catalog-filters .tabs button{min-height:32px;padding:5px 10px}
+.catalog-picker .toolbar{gap:8px;margin:6px 0}
+.catalog-picker .toolbar>button,.catalog-picker .actions button{min-height:32px;padding:5px 10px}
+.catalog-picker .toolbar>span{font-size:12px}
+.catalog-list{flex:1;min-height:0;max-height:none}
+.catalog-picker .catalog-list th,.catalog-picker .catalog-list td{padding:5px 10px;line-height:1.35}
+.catalog-picker .catalog-list th{font-size:14px;font-weight:700}
+.catalog-picker .catalog-list td{font-size:13px}
+.catalog-picker .catalog-list .cell-sub{display:inline;margin:0 0 0 6px;font-size:11px}
+.catalog-picker .catalog-list .pill{padding:1px 5px;margin-left:5px;font-size:11px}
+.catalog-picker .catalog-list input[type=checkbox]{width:17px;height:17px;min-height:0;margin:0;vertical-align:middle}
+.catalog-picker .actions{padding:7px 0 0;margin-top:6px}
+@media(max-width:640px){
+ dialog.modal:has(.catalog-picker){height:auto;max-height:calc(100dvh - 12px);padding:14px}
+ .catalog-picker{display:block;max-height:calc(100dvh - 100px);overflow-y:auto}
+ .catalog-filters{gap:6px}
+ .catalog-picker .catalog-filters .field,.catalog-picker .catalog-filters .field:has(input){flex:1 1 calc(50% - 6px);min-width:0}
+ .catalog-filters .tabs{flex-basis:100%}
+ .catalog-list{max-height:none}
+ .catalog-picker .catalog-list tr{padding:5px 3px;gap:0;grid-template-columns:30px 42px 1fr}
+ .catalog-picker .catalog-list td{padding:2px 5px}
+ .catalog-picker .catalog-list td:first-child{grid-row:1/4;display:flex;align-items:center;justify-content:center}
+ .catalog-picker .catalog-list td:nth-child(2){grid-column:2;grid-row:1}
+ .catalog-picker .catalog-list td:nth-child(3){grid-column:3;grid-row:1}
+ .catalog-picker .catalog-list td:nth-child(4){grid-column:2/4;grid-row:2}
+ .catalog-picker .catalog-list td:nth-child(5){grid-column:2/4;grid-row:3}
+ .catalog-picker .catalog-list input[type=checkbox]{width:22px;height:22px}
+}

@@ -6,7 +6,7 @@ import { controlSchema, transactionRefSchema, transactionSchema, type Control, t
 import { ApiError, type Repository, type Session } from './store';
 
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
-const sessionSchema = z.object({ subject: z.string().min(1), expiresAt: z.number().finite() }).strict();
+const sessionSchema = z.object({ subject: z.string().min(1), expiresAt: z.number().finite(), logoutHint: z.string().min(1).max(1024).optional() }).strict();
 const sessionKey = z.string().regex(/^[a-f0-9]{64}$/);
 
 /** One control-row lock serializes all business writers, including authorization changes.

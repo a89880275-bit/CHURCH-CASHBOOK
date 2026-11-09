@@ -32,7 +32,9 @@ export async function startTestPostgres(root: string, port: number, password: st
     // Only remove the single directory returned by mkdtemp under the OS temp root.
     const name = relative(resolve(tmpdir()), resolve(root));
     if (!name.startsWith('cashbook-postgres-') || name.includes(sep) || name.includes('..')) throw new Error('Unsafe test cleanup path');
-    await rm(root, { recursive: true, force: true });
+    // Windows may retain a short-lived antivirus/filesystem handle even after
+    // pg_ctl has confirmed shutdown. Retry only this already-validated temp root.
+    await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   };
   try {
     let connected = false;

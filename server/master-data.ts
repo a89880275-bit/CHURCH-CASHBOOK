@@ -3,6 +3,7 @@ import {
   accountCreateInput, accountUpdateInput, departmentCreateInput, departmentUpdateInput,
   userCreateInput, userUpdateInput, type Control, type User,
 } from './schema';
+import { provisionDefaults } from './account-provisioning';
 import { requireAdmin, requireDepartment } from './policy';
 import { ApiError, type Repository } from './store';
 
@@ -74,7 +75,7 @@ export async function handleMasterData(args: {
       if (current.departments.some(d => d.id !== id && code(d.code) === code(input.code))) throw new ApiError(409, 'DEPARTMENT_CODE_DUPLICATE', '이미 등록된 부서 코드입니다.');
       const before = index < 0 ? null : current.departments[index];
       const after = { id, code: code(input.code), name: input.name, status: input.status, managementPeriod: input.managementPeriod ?? before?.managementPeriod ?? 'MONTHLY', createdAt: before?.createdAt ?? new Date().toISOString() };
-      if (index < 0) current.departments.push(after); else current.departments[index] = after;
+      if (index < 0) {current.departments.push(after);provisionDefaults(current,admin,id);} else current.departments[index] = after;
       audit(current, admin, 'DEPARTMENT', id, id, before ? 'DEPARTMENT_UPDATED' : 'DEPARTMENT_CREATED', before, after, input.reason);
       return current;
     });
@@ -84,21 +85,25 @@ export async function handleMasterData(args: {
     if (method === 'GET') {
       const departmentId = url.searchParams.get('departmentId') ?? '';
       requireDepartment(state, user, departmentId);
-      return json({ accounts: state.accounts.filter(a => a.departmentId === departmentId).sort((a,b) => a.sortOrder-b.sortOrder || a.code.localeCompare(b.code)), revision: state.revision });
+      return json({ accounts: state.accounts.filter(a => a.departmentId === departmentId).map(a=>({...a,...(a.standardAccountId&&!state.standardAccounts?.some(s=>s.id===a.standardAccountId)?{sourceMissing:true}:{})})).sort((a,b) => a.sortOrder-b.sortOrder || a.code.localeCompare(b.code)), revision: state.revision });
     }
     if (method === 'POST' || method === 'PATCH') {
+      if (method === 'POST') requireAdmin(user);
       const input = method === 'POST' ? accountCreateInput.parse(await args.body()) : accountUpdateInput.parse(await args.body());
       activeDepartment(state, user, input.departmentId);
       const id = 'id' in input && typeof input.id === 'string' ? input.id : randomUUID();
       const next = await repo.updateControl(input.expectedRevision, current => {
-        const writer = actor(current, user.subject); activeDepartment(current, writer, input.departmentId);
+        const writer = actor(current, user.subject);
+        if (method === 'POST') requireAdmin(writer);
+        activeDepartment(current, writer, input.departmentId);
         const index = current.accounts.findIndex(a => a.id === id && a.departmentId === input.departmentId);
         if (method === 'PATCH' && index < 0) throw new ApiError(404, 'ACCOUNT_NOT_FOUND', '이 부서의 계정코드를 찾을 수 없습니다.');
         if (current.accounts.some(a => a.id !== id && a.departmentId === input.departmentId && code(a.code) === code(input.code))) throw new ApiError(409, 'ACCOUNT_CODE_DUPLICATE', '이 부서에 같은 계정코드가 있습니다.');
         const before = index < 0 ? null : current.accounts[index];
+        if (before && writer.role !== 'ADMIN' && code(before.code) !== code(input.code)) throw new ApiError(403, 'ACCOUNT_CODE_ADMIN_ONLY', '계정코드는 관리자가 변경할 수 있습니다. 공통 계정과목에서 선택하여 등록하세요.');
         // Until the transaction reference index exists, conservatively forbid all type changes.
         if (before && before.type !== input.type) throw new ApiError(409, 'ACCOUNT_TYPE_IMMUTABLE', '계정 유형은 변경할 수 없습니다. 다른 유형의 계정을 새로 등록해 주세요.');
-        const after = { id, departmentId: input.departmentId, code: code(input.code), name: input.name, type: input.type, sortOrder: input.sortOrder, status: input.status };
+        const after = { ...before, id, departmentId: input.departmentId, code: code(input.code), name: input.name, type: input.type, sortOrder: input.sortOrder, status: input.status };
         if (index < 0) current.accounts.push(after); else current.accounts[index] = after;
         audit(current, writer, 'ACCOUNT', id, input.departmentId, before ? 'ACCOUNT_UPDATED' : 'ACCOUNT_CREATED', before, after, input.reason);
         return current;

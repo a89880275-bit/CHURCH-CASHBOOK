@@ -10,11 +10,14 @@ export function useUnsavedChanges(dirty:boolean,save:()=>Promise<boolean>,discar
   useEffect(()=>{if(!guard)return;const source:Source={get dirty(){return latest.current.dirty;},save:()=>latest.current.save(),discard:()=>latest.current.discard()};guard.source.current=source;return()=>{if(guard.source.current===source)guard.source.current=null;};},[guard?.source]);
 }
 export function LeaveGuardProvider({children}:{children:ReactNode}){
+  const dirtyForms=useRef(new Set<HTMLFormElement>());
+  useEffect(()=>{const changed=(event:Event)=>{const field=event.target as HTMLElement;const form=field.closest?.('form');if(form)dirtyForms.current.add(form);};document.addEventListener('input',changed);document.addEventListener('change',changed);return()=>{document.removeEventListener('input',changed);document.removeEventListener('change',changed);};},[]);
   const source=useRef<Source|null>(null),allow=useRef(false);
   const blocker=useBlocker(()=>!allow.current&&source.current?.dirty===true);
+  const [generic,setGeneric]=useState(false);
   const [pending,setPending]=useState<{action:()=>void;cancel?:()=>void}|null>(null),[saving,setSaving]=useState(false),[error,setError]=useState('');
-  function request(action:()=>void){if(source.current?.dirty){setError('');setPending({action});}else action();}
-  useEffect(()=>{if(blocker.state==='blocked'){setError('');setPending({action:()=>blocker.proceed(),cancel:()=>blocker.reset()});}},[blocker.state,blocker.location?.key]);
+  function request(action:()=>void){if(source.current?.dirty){setGeneric(false);setError('');setPending({action});}else if([...dirtyForms.current].some(form=>form.isConnected)){setGeneric(true);setError('');setPending({action});}else action();}
+  useEffect(()=>{if(blocker.state==='blocked'){setGeneric(false);setError('');setPending({action:()=>blocker.proceed(),cancel:()=>blocker.reset()});}},[blocker.state,blocker.location?.key]);
   function cancel(){if(saving)return;pending?.cancel?.();setPending(null);}
   function proceed(){if(!pending)return;allow.current=true;const action=pending.action;setPending(null);action();setTimeout(()=>{allow.current=false;},0);}
   useEffect(()=>{
@@ -22,5 +25,5 @@ export function LeaveGuardProvider({children}:{children:ReactNode}){
     window.addEventListener('beforeunload',unload);return()=>window.removeEventListener('beforeunload',unload);
   },[]);
   async function saveAndLeave(){if(!pending||saving)return;setSaving(true);try{if(await source.current?.save())proceed();else{pending.cancel?.();setPending(null);}}catch{setError('저장하지 못했습니다. 다시 시도해 주세요.');}finally{setSaving(false);}}
-  return <Guard.Provider value={{source,request}}>{children}{pending&&<Modal title="작성 중인 장부를 저장할까요?" onClose={cancel}><p>저장하지 않은 입력이 있습니다. 저장한 뒤 이동하거나 입력을 버리고 이동할 수 있습니다.</p>{error&&<p role="alert" className="error">{error}</p>}<div className="actions"><button disabled={saving} onClick={cancel}>계속 작성</button><button disabled={saving} onClick={()=>{source.current?.discard();proceed();}}>버리고 이동</button><button className="primary" disabled={saving} onClick={()=>void saveAndLeave()}>{saving?'저장 중…':'저장 후 이동'}</button></div></Modal>}</Guard.Provider>;
+  return <Guard.Provider value={{source,request}}>{children}{pending&&<Modal title={generic?'입력 중인 내용을 버릴까요?':'작성 중인 장부를 저장할까요?'} onClose={cancel}><p>{generic?'변경한 입력이 있습니다. 계속 작성하거나 입력을 버리고 이동할 수 있습니다.':'저장하지 않은 입력이 있습니다. 저장한 뒤 이동하거나 입력을 버리고 이동할 수 있습니다.'}</p>{error&&<p role="alert" className="error">{error}</p>}<div className="actions"><button disabled={saving} onClick={cancel}>계속 작성</button><button disabled={saving} onClick={()=>{source.current?.discard();proceed();}}>버리고 이동</button>{!generic&&<button className="primary" disabled={saving} onClick={()=>void saveAndLeave()}>{saving?'저장 중…':'저장 후 이동'}</button>}</div></Modal>}</Guard.Provider>;
 }

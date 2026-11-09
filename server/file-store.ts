@@ -19,7 +19,7 @@ export function decodeSnapshot(text: string): Control {
   } catch { throw new ApiError(503, 'STORAGE_INVALID', 'JSON 저장소의 형식 또는 체크섬이 올바르지 않습니다. 원본을 보존하고 백업을 확인해 주세요.'); }
 }
 const isCode = (error: unknown, code: string) => (error as NodeJS.ErrnoException)?.code === code;
-const sessionSchema = z.object({ subject: z.string().min(1), expiresAt: z.number().finite() }).strict();
+const sessionSchema = z.object({ subject: z.string().min(1), expiresAt: z.number().finite(), logoutHint: z.string().min(1).max(1024).optional() }).strict();
 
 /** Local disk only. Never instantiate inside a Netlify Function or on a network share.
  * Cooperative writers use exclusive mkdir; a stale lock is NEVER forcibly stolen.

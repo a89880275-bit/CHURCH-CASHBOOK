@@ -4,9 +4,8 @@ publish = "dist"
 [build.environment]
 NODE_VERSION = "24"
 [functions]
-directory = "netlify/functions"
-node_bundler = "esbuild"
-external_node_modules = ["pg"]
+directory = ".netlify/functions-src"
+node_bundler = "none"
 [[redirects]]
 from = "/api/*"
 to = "/.netlify/functions/api/:splat"

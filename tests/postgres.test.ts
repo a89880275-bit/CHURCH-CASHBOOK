@@ -40,6 +40,21 @@ beforeEach(async () => {
   admin = (await issueSession(repo, 'oidc-test:admin')).split(';')[0]; staff = (await issueSession(repo, 'oidc-test:accountant')).split(';')[0];
 });
 describe('real PostgreSQL storage and production-mode APIs', () => {
+  it('serializes catalog imports across independent SQL pools and preserves transaction references',async()=>{
+    const sources=[];
+    for(const name of ['표준 A','표준 B']){
+      const response=await api(req('/admin/standard-accounts',admin,{code:name==='표준 A'?'STD-A':'STD-B',name,type:'INCOME',majorCategory:'수입',minorCategory:'검수',status:'ACTIVE',sortOrder:1,expectedRevision:(await repo.control()).revision,reason:'독립 SQL 검수'}));
+      expect(response.status).toBe(201);sources.push((await response.json()).data.account.id);
+    }
+    const before=await repo.control(),revision=before.revision;
+    const body=(id:string,expectedRevision:number)=>({departmentId:ids.edu,standardAccountIds:[id],expectedRevision,requestId:randomUUID(),reason:'부서 가져오기 검수'});
+    const responses=await Promise.all([api(req('/accounts/import',staff,body(sources[0],revision))),peerApi(req('/accounts/import',staff,body(sources[1],revision)))]);
+    expect(responses.map(r=>r.status).sort()).toEqual([201,409]);
+    const current=await repo.control(),remaining=sources.find(id=>!current.accounts.some(a=>a.standardAccountId===id))!;
+    expect((await api(req('/accounts/import',staff,body(remaining,current.revision)))).status).toBe(201);
+    const after=await peer.control(),copies=after.accounts.filter(a=>a.standardAccountId);
+    expect(new Set(copies.map(a=>a.code)).size).toBe(2);expect(after.transactionRefs).toEqual(before.transactionRefs);expect(after.accounts.find(a=>a.id===account)).toEqual(before.accounts.find(a=>a.id===account));
+  });
   it('does not overwrite provisioning or enable business writes by default', async () => {
     await expect(repo.initialize(seed())).rejects.toMatchObject({ code: 'ALREADY_PROVISIONED' });
     const readonly = new PostgresRepository(pool); expect(readonly.writable).toBe(false);
@@ -161,8 +176,9 @@ describe('production provisioning and TLS', () => {
     expect(() => productionInitialControl({ subject: 'local:owner', loginId: 'owner', displayName: '로컬' })).toThrow(); expect(() => validateProductionInitial(seed())).toThrow();
   });
   it('requires certificate validation and rejects URL parameters overriding TLS', () => {
-    const config = productionPoolConfig({ DATABASE_URL: 'postgresql://runtime:non-live-password@db.example/cashbook?sslmode=require' });
+    const config = productionPoolConfig({ DATABASE_URL: 'postgresql://runtime:non-live-password@db.example/cashbook?sslmode=require&channel_binding=require' });
     expect(config.ssl).toEqual({ rejectUnauthorized: true }); expect(config.connectionString).not.toContain('sslmode'); expect(config.max).toBeGreaterThanOrEqual(2);
+    expect(config.enableChannelBinding).toBe(true); expect(config.connectionString).not.toContain('channel_binding');
     for (const url of ['', 'http://db.example/', 'postgres://user:password@db.example/cashbook?sslmode=disable', 'postgres://user:password@db.example/cashbook?sslcert=untrusted']) expect(() => productionPoolConfig({ DATABASE_URL: url })).toThrow('DATABASE_CONFIG_INVALID');
   });
 });

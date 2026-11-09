@@ -9,7 +9,7 @@ const [command, file, confirmation] = process.argv.slice(2);
 let pool: Pool | undefined;
 try {
   if (confirmation !== '--apply' || !file || !['schema', 'initialize'].includes(command)) throw new Error('usage');
-  pool = new Pool(productionPoolConfig(process.env));
+  pool = new Pool(productionPoolConfig({ ...process.env, DATABASE_URL: process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL }));
   if (command === 'schema') {
     const schema = await readFile(new URL('../server/postgres-schema.sql', import.meta.url), 'utf8');
     // Require the exact checked-in migration path; never run arbitrary user SQL files.
