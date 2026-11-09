@@ -38,6 +38,22 @@ beforeEach(async () => {
 afterEach(async () => { await rm(root, { recursive: true, force: true }); });
 
 describe('ledger API backed by immutable per-transaction JSON', () => {
+  it('prints all matching rows beyond pagination with filtered totals and department balances',async()=>{
+    await api(request('/opening-balances',b,{departmentId:ids.edu,date:'2026-01-01',amount:1000,reason:'출력 잔액 검수',expectedRevision:1}));
+    await create({description:'출력 첫째',amount:100});await create({description:'출력 둘째',amount:200});await create({description:'검색 제외',amount:500});
+    const before=await repo.control(),response=await api(request('/transactions/print?departmentId='+ids.edu+'&from=2026-05-01&to=2026-05-31&keyword=출력&pageSize=1&page=2',b));
+    expect(response.status).toBe(200);expect(response.headers.get('content-type')).toContain('text/html');expect(response.headers.get('cache-control')).toBe('no-store');
+    const html=await response.text();expect(html).toContain('출력 첫째');expect(html).toContain('출력 둘째');expect(html).not.toContain('검색 제외');expect(html).toContain('검색 결과 전체 2건');expect(html).toContain('수입 합계: 300');expect(html).toContain('기간말 누적잔액: 1,800');expect(await repo.control()).toEqual(before);
+  });
+  it('escapes user entered descriptions and remarks in printable HTML',async()=>{
+    await create({description:'<script>alert(1)</script>',remark:'<img src=x onerror=alert(1)>'});
+    const response=await api(request('/transactions/print?departmentId='+ids.edu,b)),html=await response.text();
+    expect(response.status).toBe(200);expect(html).toContain('&lt;script&gt;');expect(html).toContain('&lt;img');expect(html).not.toContain('<script>');expect(html).not.toContain('<img');
+  });
+  it('denies anonymous and cross-department printing without modifying data',async()=>{
+    const before=await repo.control();expect((await api(request('/transactions/print?departmentId='+ids.edu))).status).toBe(401);
+    expect((await api(request('/transactions/print?departmentId='+ids.mission,b))).status).toBe(403);expect(await repo.control()).toEqual(before);
+  });
   it('shows period carry as initial balance plus prior activity, excluding first-day activity', async () => {
     await api(request('/admin/opening-balances',admin,{departmentId:ids.edu,date:'2026-01-01',amount:500000,reason:'이월 검증',expectedRevision:1}));
     await create({date:'2026-05-31',amount:100000});
