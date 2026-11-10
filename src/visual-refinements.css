@@ -51,3 +51,19 @@
   :root[data-theme=pastel-diary] .diary-cover-stitch{inset:-3px -6px;border-radius:25px}
   :root[data-theme=pastel-diary] .diary-cover-stitch:after{inset:3px;border-radius:21px}
 }
+
+/* Shared finance cards: white at 70% opacity, with readable text in every theme. */
+:root[data-theme] main .summary-kpis .kpi:nth-child(n){
+  background:rgb(255 255 255 / 70%);
+  border:1px solid #f59e0b;
+  color:#253247;
+}
+:root[data-theme] main .summary-kpis .kpi:nth-child(n) :is(.kpi-top,.ledger-amount,.amount){color:#253247}
+:root[data-theme] main .summary-kpis .kpi:nth-child(n) :is(small,.muted,.ledger-amount>span){color:#526176}
+:root[data-theme] main .summary-kpis .kpi:nth-child(n) .negative{color:#b42318}
+/* Keep chart and report backgrounds; only update their outlines. */
+:root[data-theme] main :is(.finance-dashboard-grid,.dashboard-book) .panel,
+:root[data-theme] main:has(.report-tabs) .panel,
+:root[data-theme] main .ledger-table,
+:root[data-theme] main .diary-ratio,
+:root[data-theme] main .diary-status{border:1px solid #f59e0b}
