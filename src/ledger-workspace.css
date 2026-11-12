@@ -103,7 +103,10 @@
  .ledger-workspace>.ledger-workspace-heading{grid-column:1;grid-row:1}
  :root[data-theme] .ledger-workspace .ledger-entry-pane{grid-column:1;grid-row:2}
  .ledger-workspace .ledger-history-pane{grid-column:2;grid-row:1/3}
- :root[data-theme] .ledger-workspace .ledger-history-pane .ledger-table .table-scroll{max-height:calc(100dvh - 400px)}
+ .ledger-workspace .ledger-history-pane{align-self:stretch;display:flex;flex-direction:column}
+ .ledger-workspace .ledger-history-pane>.ledger-table{display:flex;flex-direction:column;min-height:0;max-height:100%}
+ .ledger-workspace .ledger-history-pane>.ledger-table>:not(.table-scroll){flex-shrink:0}
+ :root[data-theme] .ledger-workspace .ledger-history-pane .ledger-table .table-scroll{flex:0 1 auto;max-height:calc(100dvh - 340px);min-height:0}
 }
 @media(min-width:901px) and (max-width:1200px){
  .ledger-workspace:has(>.ledger-workspace-grid){grid-template-columns:minmax(230px,28%) minmax(0,1fr)}
@@ -114,5 +117,6 @@
 .ledger-history-pane .panel-heading p{margin-top:0;line-height:1.4}
 .ledger-history-pane .ledger-compact-filters{padding-top:5px;padding-bottom:5px}
 :root[data-theme] .ledger-workspace .ledger-history-pane .ledger-table :is(th,td){padding-top:6px;padding-bottom:6px}
-.ledger-history-pane .ledger-total-line{padding-top:8px;padding-bottom:8px}
-.ledger-workspace .ledger-history-pane .pagination{padding-top:6px;padding-bottom:6px}
+.ledger-history-pane .ledger-total-line{padding-top:5px;padding-bottom:5px}
+.ledger-workspace .ledger-history-pane .pagination{padding-top:3px;padding-bottom:3px}
+:root[data-theme=pastel-diary] .diary-ledger-book.ledger-workspace{padding-bottom:24px}
