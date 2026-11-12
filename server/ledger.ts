@@ -121,19 +121,30 @@ export async function handleLedger(args: { path: string; method: string; url: UR
     if (input.accountId && !state.accounts.some(a => a.id === input.accountId && a.departmentId === input.departmentId)) throw new ApiError(403, 'ACCOUNT_ACCESS_DENIED', '조회 계정이 해당 부서에 속하지 않습니다.');
     const all = await readDepartment(repo, state, input.departmentId);
     const filtered = all.filter(t => t.date >= input.from && t.date <= input.to && (input.includeDeleted === '1' || t.status === 'ACTIVE') && (!input.type || t.type === input.type) && (!input.accountId || t.accountId === input.accountId) && (!input.keyword || `${t.description} ${t.remark}`.toLocaleLowerCase().includes(input.keyword.toLocaleLowerCase())));
-    filtered.sort((a,b) => (input.sort === 'date_asc' ? 1 : -1) * (a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id)));
+    const textOrder=new Intl.Collator('ko',{numeric:true,sensitivity:'base'});
+    const accountById=new Map(state.accounts.map(a=>[a.id,a]));
+    const compare=(a:Transaction,b:Transaction,direction=1)=>{
+      const aa=accountById.get(a.accountId),bb=accountById.get(b.accountId);
+      return direction*a.date.localeCompare(b.date)
+        || (a.type===b.type?0:a.type==='INCOME'?-1:1)
+        || textOrder.compare(aa?.code??'',bb?.code??'')
+        || textOrder.compare(aa?.name??'',bb?.name??'')
+        || textOrder.compare(a.description,b.description)
+        || a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id);
+    };
+    filtered.sort((a,b)=>compare(a,b,input.sort==='date_asc'?1:-1));
     const { opening, balance, carryForward } = periodBalances(state, input.departmentId, all, input.from, input.to);
     const balances=new Map<string,number>();
-    if(opening){let running=BigInt(opening.amount);for(const tx of all.filter(t=>t.status==='ACTIVE'&&t.date>=opening.date).sort((a,b)=>a.date.localeCompare(b.date)||a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id))){running+=tx.type==='INCOME'?BigInt(tx.amount):-BigInt(tx.amount);balances.set(tx.id,safeNumber(running));}}
+    if(opening){let running=BigInt(opening.amount);for(const tx of all.filter(t=>t.status==='ACTIVE'&&t.date>=opening.date).sort((a,b)=>compare(a,b))){running+=tx.type==='INCOME'?BigInt(tx.amount):-BigInt(tx.amount);balances.set(tx.id,safeNumber(running));}}
     if(path.endsWith('/print')){
       const sum=totals(filtered),department=state.departments.find(d=>d.id===input.departmentId)!;
-      const conditions=[input.type==='INCOME'?'수입':input.type==='EXPENSE'?'지출':'전체 유형',input.accountId?`계정: ${state.accounts.find(a=>a.id===input.accountId)?.name??input.accountId}`:'전체 계정',input.keyword?`검색: ${input.keyword}`:'검색어 없음',input.includeDeleted==='1'?'삭제 이력 포함':'활성 거래',input.sort==='date_asc'?'이전 거래일순':'최신 거래일순'].join(' · ');
+      const conditions=[input.type==='INCOME'?'수입':input.type==='EXPENSE'?'지출':'전체 유형',input.accountId?`계정: ${state.accounts.find(a=>a.id===input.accountId)?.name??input.accountId}`:'전체 계정',input.keyword?`검색: ${input.keyword}`:'검색어 없음',input.includeDeleted==='1'?'삭제 이력 포함':'활성 거래',input.sort==='date_asc'?'이전 거래일순':'최신 거래일순','같은 날짜: 수입 → 지출 → 계정코드 → 적요'].join(' · ');
       const html=ledgerPrint({department:department.name,from:input.from,to:input.to,conditions,carry:carryForward,income:sum.income,expense:sum.expense,balance,rows:filtered.map(t=>({date:t.date,type:t.type==='INCOME'?'수입':'지출',account:state.accounts.find(a=>a.id===t.accountId)?.name??'',description:t.description,remark:t.remark,income:t.type==='INCOME'?t.amount:null,expense:t.type==='EXPENSE'?t.amount:null,balance:balances.get(t.id)??null,author:state.users.find(u=>u.id===t.createdBy)?.displayName??'',updated:new Date(t.updatedAt).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'})+` · v${t.version}`,deleted:t.status==='DELETED'}))});
       return new Response(html,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','content-security-policy':"default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'self'; base-uri 'none'"}});
     }
     if(path.endsWith('/export.xlsx')){
       const sum=totals(filtered),dept=state.departments.find(d=>d.id===input.departmentId)!;
-      const rows:(string|number|null)[][]=[['부서',dept.name],['조회기간',input.from,input.to],['이월금액',carryForward],['수입 합계',sum.income,'지출 합계',sum.expense,'기간말 잔액',balance],['잔액 기준','전체 부서 거래 누적 · 검색필터 제외 · 동일 일자는 생성시각/ID 순'],['거래일','구분','계정코드','계정명','적요','수입','지출','거래 후 잔액','비고','상태','작성자']];
+      const rows:(string|number|null)[][]=[['부서',dept.name],['조회기간',input.from,input.to],['이월금액',carryForward],['수입 합계',sum.income,'지출 합계',sum.expense,'기간말 잔액',balance],['잔액 기준','전체 부서 거래 누적 · 검색필터 제외 · 동일 일자는 수입/지출·계정코드·적요 순'],['거래일','구분','계정코드','계정명','적요','수입','지출','거래 후 잔액','비고','상태','작성자']];
       for(const tx of filtered){const account=state.accounts.find(a=>a.id===tx.accountId)!;rows.push([tx.date,tx.type==='INCOME'?'수입':'지출',account.code,account.name,tx.description,tx.type==='INCOME'?tx.amount:0,tx.type==='EXPENSE'?tx.amount:0,balances.get(tx.id)??null,tx.remark,tx.status==='ACTIVE'?'활성':'삭제',state.users.find(u=>u.id===tx.createdBy)?.displayName??'']);}
       return new Response(new Uint8Array(workbook(rows)),{headers:{'content-type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','content-disposition':`attachment; filename="ledger-${input.from}-${input.to}.xlsx"`}});
     }
