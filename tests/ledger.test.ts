@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -319,6 +319,29 @@ describe('ledger API backed by immutable per-transaction JSON', () => {
 
 
 describe('diary running balances and Excel export',()=>{
+  it('defaults to initial input time across transaction dates and does not reorder after editing',async()=>{
+    const clock=Date.now();vi.useFakeTimers({toFake:['Date']});
+    try{
+      vi.setSystemTime(clock);const first=await create({date:'2026-06-20',description:'먼저 입력',amount:100});
+      vi.setSystemTime(clock+1000);const second=await create({date:'2026-04-01',description:'나중 입력',amount:200});
+      expect((await listing()).items.map((t:Transaction)=>t.id)).toEqual([second.id,first.id]);
+      expect((await listing('&sort=created_asc')).items.map((t:Transaction)=>t.id)).toEqual([first.id,second.id]);
+      expect((await listing('&sort=created_desc&pageSize=1&page=2')).items[0].id).toBe(first.id);
+      vi.setSystemTime(clock+2000);expect((await api(request('/transactions',b,update(first,{description:'먼저 입력 수정'}),'PATCH'))).status).toBe(200);
+      const result=await listing();expect(result.items.map((t:Transaction)=>t.id)).toEqual([second.id,first.id]);expect(result.items[1].createdAt).toBe(first.createdAt);
+      const html=await(await api(request('/transactions/print?departmentId='+ids.edu,b))).text();
+      const sheet=unzip(Buffer.from(await(await api(request('/transactions/export.xlsx?departmentId='+ids.edu,b))).arrayBuffer()))['xl/worksheets/sheet1.xml'];
+      for(const output of [html,sheet])expect(output.indexOf('나중 입력')).toBeLessThan(output.indexOf('먼저 입력 수정'));
+      expect(html).toContain('최근 입력순');expect(html).toContain('최초 입력시간 기준');
+    }finally{vi.useRealTimers();}
+  });
+  it('breaks identical input times deterministically so pages do not shuffle',async()=>{
+    const clock=Date.now();vi.useFakeTimers({toFake:['Date']});vi.setSystemTime(clock);
+    try{const a=await create({description:'동일시각 A'}),btx=await create({description:'동일시각 B'});const expected=[a.id,btx.id].sort().reverse();
+      expect((await listing()).items.map((t:Transaction)=>t.id)).toEqual(expected);
+      expect((await listing('&pageSize=1&page=1')).items[0].id).toBe(expected[0]);expect((await listing('&pageSize=1&page=2')).items[0].id).toBe(expected[1]);
+    }finally{vi.useRealTimers();}
+  });
   it('orders by date, income/expense, account code and Korean description with matching running balances and exports',async()=>{
     const second= randomUUID();await repo.updateControl(1,s=>{s.accounts.push({id:second,departmentId:ids.edu,code:'I002',name:'지원',type:'INCOME',sortOrder:1,status:'ACTIVE'});return s;});
     await api(request('/opening-balances',admin,{departmentId:ids.edu,date:'2026-01-01',amount:1000,reason:'정렬 잔액 검증',expectedRevision:2}));

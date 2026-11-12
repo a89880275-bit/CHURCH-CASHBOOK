@@ -80,7 +80,7 @@ const querySchema = z.object({
   departmentId: z.uuid(), from: dateSchema.default('0001-01-01'), to: dateSchema.default('9999-12-31'),
   type: z.enum(['INCOME', 'EXPENSE']).optional(), accountId: z.uuid().optional(), keyword: z.string().trim().max(100).default(''),
   page: z.coerce.number().int().min(1).max(100000).default(1), pageSize: z.coerce.number().int().min(1).max(100).default(25),
-  sort: z.enum(['date_desc', 'date_asc']).default('date_desc'), includeDeleted: z.enum(['0', '1']).default('0'),
+  sort: z.enum(['created_desc','created_asc','date_desc','date_asc']).default('created_desc'), includeDeleted: z.enum(['0', '1']).default('0'),
 }).strict().refine(q => q.from <= q.to, { message: '조회 시작일과 종료일을 확인해 주세요.' });
 
 export async function handleLedger(args: { path: string; method: string; url: URL; state: Control; user: User; repo: Repository; body: () => Promise<unknown> }): Promise<Response | null> {
@@ -132,13 +132,14 @@ export async function handleLedger(args: { path: string; method: string; url: UR
         || textOrder.compare(a.description,b.description)
         || a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id);
     };
-    filtered.sort((a,b)=>compare(a,b,input.sort==='date_asc'?1:-1));
+    const byInputTime=input.sort==='created_asc'||input.sort==='created_desc';
+    filtered.sort((a,b)=>byInputTime?(input.sort==='created_asc'?1:-1)*(a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id)):compare(a,b,input.sort==='date_asc'?1:-1));
     const { opening, balance, carryForward } = periodBalances(state, input.departmentId, all, input.from, input.to);
     const balances=new Map<string,number>();
     if(opening){let running=BigInt(opening.amount);for(const tx of all.filter(t=>t.status==='ACTIVE'&&t.date>=opening.date).sort((a,b)=>compare(a,b))){running+=tx.type==='INCOME'?BigInt(tx.amount):-BigInt(tx.amount);balances.set(tx.id,safeNumber(running));}}
     if(path.endsWith('/print')){
       const sum=totals(filtered),department=state.departments.find(d=>d.id===input.departmentId)!;
-      const conditions=[input.type==='INCOME'?'수입':input.type==='EXPENSE'?'지출':'전체 유형',input.accountId?`계정: ${state.accounts.find(a=>a.id===input.accountId)?.name??input.accountId}`:'전체 계정',input.keyword?`검색: ${input.keyword}`:'검색어 없음',input.includeDeleted==='1'?'삭제 이력 포함':'활성 거래',input.sort==='date_asc'?'이전 거래일순':'최신 거래일순','같은 날짜: 수입 → 지출 → 계정코드 → 적요'].join(' · ');
+      const conditions=[input.type==='INCOME'?'수입':input.type==='EXPENSE'?'지출':'전체 유형',input.accountId?`계정: ${state.accounts.find(a=>a.id===input.accountId)?.name??input.accountId}`:'전체 계정',input.keyword?`검색: ${input.keyword}`:'검색어 없음',input.includeDeleted==='1'?'삭제 이력 포함':'활성 거래',byInputTime?(input.sort==='created_asc'?'이전 입력순':'최근 입력순'):(input.sort==='date_asc'?'이전 거래일순':'최신 거래일순'),byInputTime?'최초 입력시간 기준 · 수정시간 제외':'같은 날짜: 수입 → 지출 → 계정코드 → 적요'].join(' · ');
       const html=ledgerPrint({department:department.name,from:input.from,to:input.to,conditions,carry:carryForward,income:sum.income,expense:sum.expense,balance,rows:filtered.map(t=>({date:t.date,type:t.type==='INCOME'?'수입':'지출',account:state.accounts.find(a=>a.id===t.accountId)?.name??'',description:t.description,remark:t.remark,income:t.type==='INCOME'?t.amount:null,expense:t.type==='EXPENSE'?t.amount:null,balance:balances.get(t.id)??null,author:state.users.find(u=>u.id===t.createdBy)?.displayName??'',updated:new Date(t.updatedAt).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'})+` · v${t.version}`,deleted:t.status==='DELETED'}))});
       return new Response(html,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','content-security-policy':"default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'self'; base-uri 'none'"}});
     }
