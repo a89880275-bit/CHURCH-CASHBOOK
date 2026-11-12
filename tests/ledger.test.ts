@@ -319,6 +319,28 @@ describe('ledger API backed by immutable per-transaction JSON', () => {
 
 
 describe('diary running balances and Excel export',()=>{
+  it('accumulates row balances in initial input order while preserving totals and period balance',async()=>{
+    await api(request('/opening-balances',admin,{departmentId:ids.edu,date:'2026-01-01',amount:1000,reason:'입력순 잔액 검증',expectedRevision:1}));
+    const clock=Date.now();vi.useFakeTimers({toFake:['Date']});
+    try{
+      vi.setSystemTime(clock);const first=await create({date:'2026-06-20',description:'처음 입력',amount:100});
+      vi.setSystemTime(clock+1000);const second=await create({date:'2026-04-01',type:'EXPENSE',accountId:expenseId,description:'과거일 지출 입력',amount:20});
+      vi.setSystemTime(clock+2000);const last=await create({date:'2026-05-01',description:'마지막 입력',amount:50});
+      const stored=await repo.control(),ascending=await listing('&from=2026-01-01&to=2026-12-31&sort=created_asc'),descending=await listing('&from=2026-01-01&to=2026-12-31');
+      expect(ascending.items.map((t:Transaction)=>t.id)).toEqual([first.id,second.id,last.id]);
+      expect(ascending.items.map((t:{runningBalance:number})=>t.runningBalance)).toEqual([1100,1080,1130]);
+      expect(descending.items.map((t:{runningBalance:number})=>t.runningBalance)).toEqual([1130,1080,1100]);
+      for(const data of [ascending,descending]){expect(data.totals).toMatchObject({income:150,expense:20,difference:130});expect(data.balance).toBe(1130);expect(data.carryForward).toBe(1000);}
+      expect((await listing('&type=EXPENSE')).items[0].runningBalance).toBe(1080);expect((await listing('&pageSize=1&page=2')).items[0].runningBalance).toBe(1080);
+      const html=await(await api(request('/transactions/print?departmentId='+ids.edu,b))).text();
+      const printRow=html.match(/<tr[^>]*>.*?<\/tr>/g)!.find(r=>r.includes('과거일 지출 입력'))!;expect(printRow).toContain('1,080');
+      const sheet=unzip(Buffer.from(await(await api(request('/transactions/export.xlsx?departmentId='+ids.edu,b))).arrayBuffer()))['xl/worksheets/sheet1.xml'];
+      const exportRow=sheet.match(/<row[^>]*>.*?<\/row>/g)!.find(r=>r.includes('과거일 지출 입력'))!;expect(exportRow).toContain('<v>1080</v>');
+      expect(await repo.control()).toEqual(stored);
+      vi.setSystemTime(clock+3000);expect((await api(request('/transactions',b,update(first,{remark:'수정해도 입력 순서 유지'}),'PATCH'))).status).toBe(200);
+      expect((await listing()).items.map((t:{runningBalance:number})=>t.runningBalance)).toEqual([1130,1080,1100]);
+    }finally{vi.useRealTimers();}
+  });
   it('defaults to initial input time across transaction dates and does not reorder after editing',async()=>{
     const clock=Date.now();vi.useFakeTimers({toFake:['Date']});
     try{
@@ -342,7 +364,7 @@ describe('diary running balances and Excel export',()=>{
       expect((await listing('&pageSize=1&page=1')).items[0].id).toBe(expected[0]);expect((await listing('&pageSize=1&page=2')).items[0].id).toBe(expected[1]);
     }finally{vi.useRealTimers();}
   });
-  it('orders by date, income/expense, account code and Korean description with matching running balances and exports',async()=>{
+  it('retains explicit legacy date ordering for API compatibility and matching exports',async()=>{
     const second= randomUUID();await repo.updateControl(1,s=>{s.accounts.push({id:second,departmentId:ids.edu,code:'I002',name:'지원',type:'INCOME',sortOrder:1,status:'ACTIVE'});return s;});
     await api(request('/opening-balances',admin,{departmentId:ids.edu,date:'2026-01-01',amount:1000,reason:'정렬 잔액 검증',expectedRevision:2}));
     const expense=await create({type:'EXPENSE',accountId:expenseId,description:'가 지출',amount:30});
@@ -351,10 +373,9 @@ describe('diary running balances and Excel export',()=>{
     const firstText=await create({description:'가 회비',amount:10});
     const nextDay=await create({date:'2026-05-21',description:'다음 날짜',amount:50});
     const before=await repo.control();
-    const asc=await listing('&sort=date_asc');expect(asc.items.map((t:Transaction)=>t.id)).toEqual([firstText.id,laterText.id,support.id,expense.id,nextDay.id]);expect(asc.items.map((t:Transaction&{runningBalance:number|null})=>t.runningBalance)).toEqual([1010,1030,1070,1040,1090]);
+    const asc=await listing('&sort=date_asc');expect(asc.items.map((t:Transaction)=>t.id)).toEqual([firstText.id,laterText.id,support.id,expense.id,nextDay.id]);expect(asc.balance).toBe(1090);
     expect((await listing('&sort=date_desc')).items.map((t:Transaction)=>t.id)).toEqual([nextDay.id,firstText.id,laterText.id,support.id,expense.id]);
     expect((await listing('&sort=date_asc&pageSize=2&page=2')).items.map((t:Transaction)=>t.id)).toEqual([support.id,expense.id]);
-    expect((await listing('&type=EXPENSE')).items[0].runningBalance).toBe(1040);
     const html=await(await api(request('/transactions/print?departmentId='+ids.edu+'&sort=date_asc',b))).text();
     const sheet=unzip(Buffer.from(await(await api(request('/transactions/export.xlsx?departmentId='+ids.edu+'&sort=date_asc',b))).arrayBuffer()))['xl/worksheets/sheet1.xml'];
     for(const output of [html,sheet]){const positions=['가 회비','나 회비','가 지원','가 지출','다음 날짜'].map(v=>output.indexOf(v));expect(positions.every(n=>n>=0)).toBe(true);expect(positions).toEqual([...positions].sort((a,b)=>a-b));}

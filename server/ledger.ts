@@ -133,10 +133,11 @@ export async function handleLedger(args: { path: string; method: string; url: UR
         || a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id);
     };
     const byInputTime=input.sort==='created_asc'||input.sort==='created_desc';
-    filtered.sort((a,b)=>byInputTime?(input.sort==='created_asc'?1:-1)*(a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id)):compare(a,b,input.sort==='date_asc'?1:-1));
+    const compareInput=(a:Transaction,b:Transaction)=>a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id);
+    filtered.sort((a,b)=>byInputTime?(input.sort==='created_asc'?1:-1)*compareInput(a,b):compare(a,b,input.sort==='date_asc'?1:-1));
     const { opening, balance, carryForward } = periodBalances(state, input.departmentId, all, input.from, input.to);
     const balances=new Map<string,number>();
-    if(opening){let running=BigInt(opening.amount);for(const tx of all.filter(t=>t.status==='ACTIVE'&&t.date>=opening.date).sort((a,b)=>compare(a,b))){running+=tx.type==='INCOME'?BigInt(tx.amount):-BigInt(tx.amount);balances.set(tx.id,safeNumber(running));}}
+    if(opening){let running=BigInt(opening.amount);for(const tx of all.filter(t=>t.status==='ACTIVE'&&t.date>=opening.date).sort(compareInput)){running+=tx.type==='INCOME'?BigInt(tx.amount):-BigInt(tx.amount);balances.set(tx.id,safeNumber(running));}}
     if(path.endsWith('/print')){
       const sum=totals(filtered),department=state.departments.find(d=>d.id===input.departmentId)!;
       const conditions=[input.type==='INCOME'?'수입':input.type==='EXPENSE'?'지출':'전체 유형',input.accountId?`계정: ${state.accounts.find(a=>a.id===input.accountId)?.name??input.accountId}`:'전체 계정',input.keyword?`검색: ${input.keyword}`:'검색어 없음',input.includeDeleted==='1'?'삭제 이력 포함':'활성 거래',byInputTime?(input.sort==='created_asc'?'이전 입력순':'최근 입력순'):(input.sort==='date_asc'?'이전 거래일순':'최신 거래일순'),byInputTime?'최초 입력시간 기준 · 수정시간 제외':'같은 날짜: 수입 → 지출 → 계정코드 → 적요'].join(' · ');
@@ -145,7 +146,7 @@ export async function handleLedger(args: { path: string; method: string; url: UR
     }
     if(path.endsWith('/export.xlsx')){
       const sum=totals(filtered),dept=state.departments.find(d=>d.id===input.departmentId)!;
-      const rows:(string|number|null)[][]=[['부서',dept.name],['조회기간',input.from,input.to],['이월금액',carryForward],['수입 합계',sum.income,'지출 합계',sum.expense,'기간말 잔액',balance],['잔액 기준','전체 부서 거래 누적 · 검색필터 제외 · 동일 일자는 수입/지출·계정코드·적요 순'],['거래일','구분','계정코드','계정명','적요','수입','지출','거래 후 잔액','비고','상태','작성자']];
+      const rows:(string|number|null)[][]=[['부서',dept.name],['조회기간',input.from,input.to],['이월금액',carryForward],['수입 합계',sum.income,'지출 합계',sum.expense,'기간말 잔액',balance],['잔액 기준','전체 부서 거래 누적 · 검색필터 제외 · 거래 후 잔액은 최초 입력시간·ID 오름차순 누적'],['거래일','구분','계정코드','계정명','적요','수입','지출','거래 후 잔액','비고','상태','작성자']];
       for(const tx of filtered){const account=state.accounts.find(a=>a.id===tx.accountId)!;rows.push([tx.date,tx.type==='INCOME'?'수입':'지출',account.code,account.name,tx.description,tx.type==='INCOME'?tx.amount:0,tx.type==='EXPENSE'?tx.amount:0,balances.get(tx.id)??null,tx.remark,tx.status==='ACTIVE'?'활성':'삭제',state.users.find(u=>u.id===tx.createdBy)?.displayName??'']);}
       return new Response(new Uint8Array(workbook(rows)),{headers:{'content-type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','content-disposition':`attachment; filename="ledger-${input.from}-${input.to}.xlsx"`}});
     }
