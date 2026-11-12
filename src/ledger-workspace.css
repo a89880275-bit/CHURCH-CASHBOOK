@@ -1,0 +1,93 @@
+.ledger-workspace{min-width:0}
+.ledger-workspace-heading .page-heading{margin-bottom:16px}
+.ledger-workspace-grid{display:grid;grid-template-columns:minmax(260px,28%) minmax(0,1fr);gap:16px;align-items:start}
+.ledger-entry-pane,.ledger-history-pane{min-width:0}
+.ledger-history-pane{container-type:inline-size}
+.ledger-entry-pane .panel-heading,.ledger-workspace .ledger-table .panel-heading{padding:14px 16px;gap:8px;align-items:center}
+.ledger-entry-pane .panel-heading p,.ledger-workspace .ledger-table .panel-heading p{margin-bottom:0;font-size:11px}
+.ledger-entry-content{padding:0 16px 16px}
+.ledger-entry-content .field{margin:9px 0;min-width:0;font-weight:600;font-size:12px}
+.ledger-entry-content .field :is(input,select,textarea){font-weight:400;width:100%;min-width:0}
+.ledger-entry-content .field :is(input,select){min-height:34px;padding:7px 8px}
+.ledger-entry-content textarea{min-height:54px;padding:8px}
+.ledger-entry-content .form-grid{gap:10px}
+.ledger-entry-content .modal-department{margin:9px 0;font-size:11px}
+.ledger-entry-content .actions{margin-top:16px;gap:8px;flex-wrap:wrap}
+.ledger-entry-content .opening-note{margin:16px 0 0;padding:10px;flex-wrap:wrap;gap:7px}
+.ledger-entry-content .opening-note>svg{display:none}
+.ledger-entry-content .opening-note button{padding:6px 8px}
+.ledger-workspace .table-tools{flex-wrap:nowrap;flex-shrink:0}
+.ledger-workspace .table-tools .icon-button{padding:6px;width:30px;height:30px;min-height:30px}
+.ledger-workspace .table-tools .filter-deleted{display:flex;align-items:center;gap:3px;font-size:9px;white-space:nowrap}
+.ledger-workspace .table-tools .filter-deleted input{width:13px;height:13px;margin:0}
+.ledger-compact-filters{padding:10px 12px;border-bottom:1px solid var(--line,#26354c);min-width:0}
+.ledger-compact-filters form{display:flex;align-items:flex-end;gap:4px;flex-wrap:nowrap;overflow-x:auto;padding-bottom:3px}
+.ledger-compact-filters .field{margin:0;gap:3px;min-width:0;flex:0 0 104px;font-size:10px}
+.ledger-compact-filters .field.filter-type{flex-basis:58px}
+.ledger-compact-filters .field.filter-account{flex-basis:90px}
+.ledger-compact-filters .field.ledger-keyword{flex:1 0 80px;max-width:150px}
+.ledger-compact-filters :is(input,select){height:30px;min-height:30px;padding:4px;font-size:11px;width:100%;min-width:0}
+.ledger-compact-filters .period-picker{display:flex;align-items:flex-end;flex:none;gap:4px;padding:0;margin:0;border:0;background:none}
+.ledger-compact-filters .period-picker :is(.pill,.period-range){display:none}
+.ledger-compact-filters .period-picker label{display:flex;flex-direction:column;gap:3px;font-size:10px;width:54px}
+.ledger-compact-filters .period-picker label:has(select){width:46px}
+.ledger-compact-filters .filter-deleted{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:9px;flex:none}
+.ledger-compact-filters .filter-deleted input{width:14px;height:14px;min-height:14px}
+.ledger-compact-filters button{height:30px;min-height:30px;padding:5px;font-size:11px;flex:none;gap:3px;white-space:nowrap}
+.ledger-workspace .ledger-table table{min-width:820px;width:100%}
+.ledger-workspace .ledger-table :is(th,td){padding:9px 8px;font-size:11px}
+.ledger-workspace .ledger-table th{font-weight:700;position:sticky;top:0;z-index:1;background:var(--soft,#182338)}
+.ledger-workspace .ledger-table .table-scroll{max-height:calc(100dvh - 540px);min-height:260px;overflow:auto}
+.ledger-workspace .ledger-table .description-cell{min-width:115px;max-width:220px}
+.ledger-workspace .ledger-table .row-actions button{padding:5px!important}
+.ledger-workspace .ledger-table .selected-transaction>td{background:var(--soft,#213654)}
+.ledger-workspace .pagination{padding:10px 12px;gap:7px}
+.ledger-total-line{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 12px;border-top:1px solid var(--line,#30415c);overflow-x:auto;white-space:nowrap;font-size:12px}
+.ledger-total-line strong{font-size:15px;font-variant-numeric:tabular-nums}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@container(max-width:760px){
+ .ledger-compact-filters{padding:8px}
+ .ledger-compact-filters form{gap:3px}
+ .ledger-compact-filters .field{flex-basis:92px}
+ .ledger-compact-filters .field.filter-type{flex-basis:48px}
+ .ledger-compact-filters .field.filter-account{flex-basis:70px}
+ .ledger-compact-filters .field.ledger-keyword{flex:1 0 55px}
+ .ledger-compact-filters .period-picker label{width:44px}
+ .ledger-compact-filters .period-picker label:has(select){width:38px}
+ .ledger-compact-filters :is(input,select){font-size:10px;padding:3px}
+ .ledger-workspace .table-tools{gap:3px}
+ .ledger-workspace .table-tools select{max-width:96px;padding:6px;font-size:9px}
+ .ledger-workspace .table-tools .icon-button{width:26px;height:28px;min-height:28px;padding:4px}
+}
+:root[data-theme=pastel-diary] .diary-ledger-book.ledger-workspace{display:block;background:#fffcf7}
+:root[data-theme=pastel-diary] .ledger-workspace-grid{grid-template-columns:minmax(260px,28%) minmax(0,1fr);gap:38px}
+:root[data-theme=pastel-diary] .ledger-workspace .diary-entry-page{grid-column:auto;position:static;top:auto;padding:0;border:1px solid var(--line,#efdae0)}
+:root[data-theme=pastel-diary] .ledger-workspace .diary-binder{left:calc(28% + 7px);top:110px;bottom:45px}
+:root[data-theme=pastel-diary] .ledger-workspace .diary-binder i{width:60px}
+:root[data-theme=pastel-diary] .ledger-workspace .diary-spine-fold{left:calc(28% - 13px)}
+:root[data-theme=pastel-diary] .ledger-workspace .diary-page-outline{grid-template-columns:28fr 38px 72fr}
+:root[data-theme=pastel-diary] .ledger-workspace .diary-entry-page .field{margin:9px 0;gap:5px}
+:root[data-theme=pastel-diary] .ledger-workspace .diary-entry-page :is(input,select,textarea){padding:8px;min-width:0}
+:root[data-theme=pastel-diary] .ledger-workspace .ledger-table :is(th,td){padding:9px 8px}
+:root[data-theme=pastel-diary] .ledger-workspace .ledger-table .table-scroll{max-height:calc(100dvh - 580px)}
+:root[data-theme=pastel-diary] .ledger-workspace .ledger-compact-filters .field{font-size:10px}
+:root[data-theme=pastel-diary] .ledger-workspace .ledger-compact-filters :is(input,select){padding:4px;font-size:11px}
+@media(max-width:1200px){
+ .ledger-workspace-grid,:root[data-theme=pastel-diary] .ledger-workspace-grid{grid-template-columns:minmax(230px,28%) minmax(0,1fr);gap:14px}
+ :root[data-theme=pastel-diary] .ledger-workspace .diary-binder,:root[data-theme=pastel-diary] .ledger-workspace .diary-spine-fold{display:none}
+ .ledger-entry-content .form-grid,:root[data-theme=pastel-diary] .ledger-workspace .diary-entry-page .form-grid{grid-template-columns:1fr;gap:0}
+}
+@media(max-width:900px){
+ .ledger-workspace-grid,:root[data-theme=pastel-diary] .ledger-workspace-grid{grid-template-columns:1fr}
+ .ledger-entry-content .form-grid,:root[data-theme=pastel-diary] .ledger-workspace .diary-entry-page .form-grid{grid-template-columns:1fr 1fr;gap:10px}
+ .ledger-workspace .ledger-table .table-scroll,:root[data-theme=pastel-diary] .ledger-workspace .ledger-table .table-scroll{max-height:65dvh}
+}
+@media(max-width:600px){
+ .ledger-workspace .ledger-table .panel-heading{flex-wrap:wrap;padding:12px}
+ .ledger-compact-filters form{flex-wrap:wrap;overflow:visible;gap:6px}
+ .ledger-compact-filters .field.ledger-keyword{max-width:none}
+ .ledger-workspace .table-tools{max-width:100%}
+ .ledger-total-line{flex-wrap:wrap;white-space:normal;font-size:11px;gap:8px}
+ .ledger-total-line strong{font-size:13px}
+ .ledger-workspace .pagination{flex-wrap:wrap}
+}

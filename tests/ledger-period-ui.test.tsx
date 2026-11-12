@@ -8,6 +8,15 @@ import { currentPeriod, type ManagementPeriod } from '../shared/period';
 import { ThemeProvider } from '../src/theme';
 import { themes } from '../shared/theme';
 describe('initial ledger period shown to the user',()=>{
+  it.each(themes)('keeps entry before history and the requested columns and icon tools in %s',theme=>{
+    const me:Me={user:{id:'admin',displayName:'검증',role:'ADMIN',loginId:'admin',theme},departments:[{id:'00000000-0000-4000-8000-000000000011',name:'검증',code:'QA',status:'ACTIVE'}],revision:1,local:true,writable:true};
+    const html=renderToStaticMarkup(<MemoryRouter><Session.Provider value={{me,refresh:async()=>{},department:me.departments[0].id,setDepartment:()=>{}}}><ThemeProvider me={me}><LedgerPage/></ThemeProvider></Session.Provider></MemoryRouter>);
+    expect(html.indexOf('aria-label="거래 입력"')).toBeLessThan(html.indexOf('class="ledger-history-pane"'));
+    expect(html).not.toContain('income-button');expect(html).not.toContain('expense-button');expect(html).not.toContain('class="modal"');
+    const columns=['거래일','유형','계정','적요 (비고)','수입금액','지출금액','거래 후 잔액','작업','작성자'];
+    const headers=[...html.matchAll(/<th(?: class="[^"]*")?>(.*?)<\/th>/g)].map(x=>x[1]);expect(headers).toEqual(columns);
+    expect(html).toContain('aria-label="거래내역 인쇄"');expect(html).toContain('aria-label="Excel 다운로드"');expect(html).toContain('aria-label="JSON 백업"');expect(html).toContain('aria-label="거래내역 합계"');
+  });
   it.each(themes)('offers both Excel and department JSON export in %s',theme=>{const me:Me={user:{id:'admin',displayName:'검증',role:'ADMIN',loginId:'admin',theme},departments:[{id:'00000000-0000-4000-8000-000000000011',name:'검증',code:'QA',status:'ACTIVE'}],revision:1,local:true,writable:true};const html=renderToStaticMarkup(<MemoryRouter><Session.Provider value={{me,refresh:async()=>{},department:me.departments[0].id,setDepartment:()=>{}}}><ThemeProvider me={me}><LedgerPage/></ThemeProvider></Session.Provider></MemoryRouter>);expect(html).toContain('Excel 다운로드');expect(html).toContain('JSON 백업');});
   it('opens the exact reporting period and account from a valid drilldown URL',()=>{
     const dept='00000000-0000-4000-8000-000000000011',account='00000000-0000-4000-8000-000000000031';
