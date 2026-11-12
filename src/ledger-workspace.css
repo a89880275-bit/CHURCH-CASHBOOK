@@ -59,7 +59,7 @@
 }
 :root[data-theme=pastel-diary] .diary-ledger-book.ledger-workspace{display:block;background:#fffcf7;--ledger-spine-x:calc(28% + 26px)}
 :root[data-theme=pastel-diary] .ledger-workspace-grid{grid-template-columns:minmax(260px,28%) minmax(0,1fr);gap:38px}
-:root[data-theme=pastel-diary] .ledger-workspace .diary-entry-page{grid-column:auto;position:static;top:auto;padding:0;border:1px solid var(--line,#efdae0)}
+:root[data-theme=pastel-diary] .ledger-workspace .diary-entry-page{grid-column:auto;position:static;top:auto;padding:0;border:1px solid var(--line,#efdae0);background:#fff0f5}
 :root[data-theme=pastel-diary] .ledger-workspace .diary-binder{left:calc(var(--ledger-spine-x) - 19px);top:110px;bottom:45px}
 :root[data-theme=pastel-diary] .ledger-workspace .diary-binder i{width:60px}
 :root[data-theme=pastel-diary] .ledger-workspace .diary-spine-fold{left:calc(var(--ledger-spine-x) - 48px)}
